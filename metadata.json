@@ -1,0 +1,10 @@
+{
+  "name": "SysAssist",
+  "description": "Skeuomorphic dark-themed IT asset management system for laptops and peripherals with barcode scanning, Jira hardware ticketing, change logs, audit trail, and Apple warranty coverage integration.",
+  "requestFramePermissions": [
+    "camera"
+  ],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
