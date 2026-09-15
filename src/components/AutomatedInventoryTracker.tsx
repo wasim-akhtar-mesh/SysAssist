@@ -11,11 +11,14 @@ import {
   UserCheck,
   ArrowRight,
   TrendingUp,
-  Cpu
+  Cpu,
+  Keyboard,
+  Mouse,
+  Headphones
 } from 'lucide-react';
-import { Asset, InventoryThreshold } from '../types';
+import { Asset, InventoryThreshold, AssetCategory } from '../types';
 import { SkeuoButton, LedIndicator, SegmentedDisplay, StatusBadge } from './SkeuoComponents';
-import { soundFx } from '../services/audioService';
+import { getCategoryStockAssessments } from '../utils/inventorySelectors';
 
 interface AutomatedInventoryTrackerProps {
   assets: Asset[];
@@ -30,32 +33,24 @@ export const AutomatedInventoryTracker: React.FC<AutomatedInventoryTrackerProps>
   onDraftProcurementTicket,
   onOpenAssetDetail
 }) => {
-  const categoryStats = [
-    { category: 'Laptop', label: 'Laptops', minBuffer: 3, icon: <Laptop className="w-4 h-4 text-[#C66A2B]" /> },
-    { category: 'Display', label: 'Displays & Monitors', minBuffer: 2, icon: <Monitor className="w-4 h-4 text-[#2C6E9B]" /> },
-    { category: 'Dock', label: 'Thunderbolt Docks', minBuffer: 2, icon: <Boxes className="w-4 h-4 text-[#10B981]" /> },
-    { category: 'Keyboard', label: 'Keyboards', minBuffer: 4, icon: <Layers className="w-4 h-4 text-[#686B6D]" /> },
-    { category: 'Mouse', label: 'Precision Mice', minBuffer: 4, icon: <Layers className="w-4 h-4 text-[#686B6D]" /> },
-    { category: 'Audio/Headset', label: 'Headsets & Audio', minBuffer: 2, icon: <Layers className="w-4 h-4 text-[#686B6D]" /> }
-  ].map(cat => {
-    const total = assets.filter(a => a.category === cat.category).length;
-    const inStock = assets.filter(a => a.category === cat.category && a.status === 'In Stock').length;
-    const inUse = assets.filter(a => a.category === cat.category && a.status === 'In Use').length;
-    const maintenance = assets.filter(a => a.category === cat.category && a.status === 'Maintenance').length;
-    return {
-      ...cat,
-      total,
-      inStock,
-      inUse,
-      maintenance,
-      isLowStock: inStock < cat.minBuffer
-    };
-  });
+  const categoryAssessments = getCategoryStockAssessments(assets, thresholds);
+  const lowStockAlerts = categoryAssessments.filter(c => c.isLowStock);
 
-  const lowStockAlerts = categoryStats.filter(c => c.isLowStock);
   const inStockTotal = assets.filter(a => a.status === 'In Stock').length;
   const inUseTotal = assets.filter(a => a.status === 'In Use').length;
   const maintenanceTotal = assets.filter(a => a.status === 'Maintenance').length;
+
+  const getCategoryIcon = (category: AssetCategory) => {
+    switch (category) {
+      case 'Laptop': return <Laptop className="w-4 h-4 text-[#C66A2B]" />;
+      case 'Display': return <Monitor className="w-4 h-4 text-[#2C6E9B]" />;
+      case 'Dock': return <Boxes className="w-4 h-4 text-[#10B981]" />;
+      case 'Keyboard': return <Keyboard className="w-4 h-4 text-[#686B6D]" />;
+      case 'Mouse': return <Mouse className="w-4 h-4 text-[#686B6D]" />;
+      case 'Audio/Headset': return <Headphones className="w-4 h-4 text-[#686B6D]" />;
+      default: return <Layers className="w-4 h-4 text-[#686B6D]" />;
+    }
+  };
 
   return (
     <div className="space-y-3.5">
@@ -98,32 +93,22 @@ export const AutomatedInventoryTracker: React.FC<AutomatedInventoryTrackerProps>
       {/* Low Stock Threshold Alert Banner if applicable */}
       {lowStockAlerts.length > 0 && (
         <div className="p-3.5 rounded-lg ti-surface border border-[#D97706]/40 bg-[#FFFDF7] shadow-xs">
-          <div className="flex flex-wrap items-center justify-between gap-2 pb-2.5 border-b border-[#EED7A1] mb-2.5">
-            <div className="flex items-center gap-2">
-              <div className="w-7 h-7 rounded ti-well flex items-center justify-center text-[#D97706] border border-[#EED7A1]">
-                <AlertTriangle className="w-4 h-4" />
-              </div>
-              <div>
-                <h3 className="text-xs font-bold text-[#8C4F00]">
-                  Automated Quota Warning: {lowStockAlerts.length} Hardware Categories Below Minimum Safe Reserve
-                </h3>
-                <p className="text-[11px] text-[#686B6D]">
-                  Equipment availability in the depot has fallen below threshold quotas for upcoming Jira deployments.
-                </p>
-              </div>
-            </div>
-            <LedIndicator color="amber" pulse={true} label="QUOTA ALERT" size="sm" />
+          <div className="flex items-center gap-2 mb-2">
+            <ShieldAlert className="w-4 h-4 text-[#D97706]" />
+            <h4 className="text-xs font-bold uppercase tracking-wider text-[#B45309]">
+              Low Inventory Buffer Warning ({lowStockAlerts.length} Categories Below Safe Quota)
+            </h4>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-xs">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2.5 mt-2">
             {lowStockAlerts.map(alert => (
               <div key={alert.category} className="p-2.5 rounded ti-well flex items-center justify-between gap-3 border border-[#E8DFC8]">
-                <div>
-                  <div className="font-semibold text-[#181A1B]">
-                    {alert.label}
+                <div className="min-w-0 flex-1">
+                  <div className="font-semibold text-[#181A1B] truncate text-xs">
+                    {alert.category} • {alert.modelName}
                   </div>
                   <div className="text-[11px] text-[#8C4F00] font-medium mt-0.5">
-                    {alert.inStock} unit(s) remaining (Target buffer: {alert.minBuffer}+)
+                    {alert.inStock} unit(s) in depot (Buffer threshold: {alert.minQuantity})
                   </div>
                 </div>
 
@@ -131,11 +116,10 @@ export const AutomatedInventoryTracker: React.FC<AutomatedInventoryTrackerProps>
                   size="sm"
                   variant="primary"
                   onClick={() => {
-                    soundFx.playMechanicalClick();
                     onDraftProcurementTicket({
                       category: alert.category,
-                      modelName: alert.label,
-                      quantityToOrder: 5
+                      modelName: alert.modelName,
+                      quantityToOrder: alert.deficit > 0 ? alert.deficit + 2 : 3
                     });
                   }}
                   icon={<ShoppingCart className="w-3.5 h-3.5" />}
@@ -171,19 +155,23 @@ export const AutomatedInventoryTracker: React.FC<AutomatedInventoryTrackerProps>
                 <th className="py-2.5 px-3">In Field</th>
                 <th className="py-2.5 px-3">Maintenance</th>
                 <th className="py-2.5 px-3">Total Fleet</th>
-                <th className="py-2.5 px-3">Allocation Level</th>
+                <th className="py-2.5 px-3">Target Buffer</th>
+                <th className="py-2.5 px-3 min-w-[120px]">Allocation</th>
                 <th className="py-2.5 px-3 text-right">Quota Status</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-[#EAE8E2] text-[#181A1B]">
-              {categoryStats.map(stat => {
+              {categoryAssessments.map(stat => {
                 const percentInUse = Math.round((stat.inUse / (stat.total || 1)) * 100);
                 return (
                   <tr key={stat.category} className="hover:bg-[#FAF9F5] transition-colors">
                     <td className="py-2.5 px-3">
                       <div className="flex items-center gap-2">
-                        <div className="p-1 rounded ti-well">{stat.icon}</div>
-                        <span className="font-semibold text-xs text-[#181A1B]">{stat.label}</span>
+                        <div className="p-1 rounded ti-well">{getCategoryIcon(stat.category)}</div>
+                        <div>
+                          <div className="font-semibold text-xs text-[#181A1B]">{stat.category}</div>
+                          <div className="text-[10px] text-[#686B6D]">{stat.modelName}</div>
+                        </div>
                       </div>
                     </td>
                     <td className="py-2.5 px-3 font-mono font-bold text-[#0F682C]">
@@ -198,7 +186,10 @@ export const AutomatedInventoryTracker: React.FC<AutomatedInventoryTrackerProps>
                     <td className="py-2.5 px-3 font-mono font-medium text-[#181A1B]">
                       {stat.total}
                     </td>
-                    <td className="py-2.5 px-3 min-w-[140px]">
+                    <td className="py-2.5 px-3 font-mono text-xs text-[#505457]">
+                      {stat.minQuantity} min ({stat.criticalThreshold} crit)
+                    </td>
+                    <td className="py-2.5 px-3">
                       <div className="flex items-center gap-2">
                         <div className="flex-1 h-1.5 bg-[#D8D6CF] rounded-full overflow-hidden">
                           <div 
@@ -214,7 +205,7 @@ export const AutomatedInventoryTracker: React.FC<AutomatedInventoryTrackerProps>
                     <td className="py-2.5 px-3 text-right whitespace-nowrap">
                       {stat.isLowStock ? (
                         <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-semibold bg-[#FFF8E6] text-[#8C4F00] border border-[#FFE299]">
-                          <AlertTriangle className="w-3 h-3 text-[#D97706]" /> Low Buffer ({stat.inStock}/{stat.minBuffer})
+                          <AlertTriangle className="w-3 h-3 text-[#D97706]" /> Low Buffer ({stat.inStock}/{stat.minQuantity})
                         </span>
                       ) : (
                         <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-medium bg-[#EBF7EE] text-[#0F682C] border border-[#B7E5C3]">

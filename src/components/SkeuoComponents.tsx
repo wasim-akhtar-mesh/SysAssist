@@ -1,5 +1,4 @@
 import React from 'react';
-import { soundFx } from '../services/audioService';
 
 interface LedIndicatorProps {
   color: 'green' | 'amber' | 'red' | 'blue';
@@ -75,7 +74,6 @@ export const SkeuoButton: React.FC<SkeuoButtonProps> = ({
 }) => {
   const handleClick = (e: React.MouseEvent<HTMLButtonElement>) => {
     if (!disabled) {
-      soundFx.playMechanicalClick();
       onClick?.(e);
     }
   };

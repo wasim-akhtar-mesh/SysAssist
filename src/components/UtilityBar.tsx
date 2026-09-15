@@ -3,7 +3,9 @@ import {
   Menu, 
   Scan, 
   Plus, 
+  LayoutDashboard,
   Laptop, 
+  Monitor,
   Boxes, 
   Layers, 
   History, 
@@ -12,7 +14,6 @@ import {
   Server
 } from 'lucide-react';
 import { LedIndicator, SkeuoButton } from './SkeuoComponents';
-import { SysAssistSymbol } from './BrandLogo';
 import { ActiveTab } from './NavigationRail';
 
 interface UtilityBarProps {
@@ -37,20 +38,30 @@ export const UtilityBar: React.FC<UtilityBarProps> = ({
   currentUser
 }) => {
   const titles: Record<ActiveTab, { title: string; subtitle: string; icon: React.ReactNode }> = {
-    inventory: {
-      title: 'Inventory Fleet',
-      subtitle: `${totalAssetsCount} active devices enrolled`,
+    dashboard: {
+      title: 'Operations Dashboard',
+      subtitle: `${totalAssetsCount} total assets in fleet telemetry`,
+      icon: <LayoutDashboard className="w-4 h-4 text-[#C66A2B]" />
+    },
+    laptops: {
+      title: 'Laptop Workstations',
+      subtitle: 'Mobile computing fleet and deployment tracking',
       icon: <Laptop className="w-4 h-4 text-[#C66A2B]" />
     },
+    peripherals: {
+      title: 'Peripherals & Accessories',
+      subtitle: 'Displays, docks, keyboards, mice, audio & other accessories',
+      icon: <Monitor className="w-4 h-4 text-[#2C6E9B]" />
+    },
     stock_tracker: {
-      title: 'Buffer Stock Reserves',
+      title: 'Stock & Procurement',
       subtitle: lowStockCount > 0 ? `${lowStockCount} category threshold alerts` : 'All reserve quotas nominal',
       icon: <Boxes className="w-4 h-4 text-[#C66A2B]" />
     },
     jira: {
-      title: 'Jira Service Management',
+      title: 'Jira Requests',
       subtitle: `${openJiraCount} pending provisioning requests`,
-      icon: <Layers className="w-4 h-4 text-[#C66A2B]" />
+      icon: <Layers className="w-4 h-4 text-[#2C6E9B]" />
     },
     audit_trail: {
       title: 'Operational Audit Trail',
@@ -59,7 +70,7 @@ export const UtilityBar: React.FC<UtilityBarProps> = ({
     }
   };
 
-  const current = titles[activeTab];
+  const current = titles[activeTab] || titles.dashboard;
 
   return (
     <header className="h-13 ti-surface px-3 sm:px-6 flex items-center justify-between gap-3 shrink-0 z-20 select-none">

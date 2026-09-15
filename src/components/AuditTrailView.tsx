@@ -14,7 +14,6 @@ import {
 } from 'lucide-react';
 import { ChangeLogEntry } from '../types';
 import { SkeuoButton, SegmentedDisplay, StatusBadge } from './SkeuoComponents';
-import { soundFx } from '../services/audioService';
 
 interface AuditTrailViewProps {
   changeLogs: ChangeLogEntry[];
@@ -49,7 +48,6 @@ export const AuditTrailView: React.FC<AuditTrailViewProps> = ({
   });
 
   const handleExportCSV = () => {
-    soundFx.playMechanicalClick();
     const headers = ['Timestamp', 'Asset Tag', 'Asset Name', 'Performed By', 'Action', 'Property', 'Old Value', 'New Value', 'Reason', 'Jira Key'];
     const rows = filteredLogs.map(log => [
       `"${log.timestamp}"`,

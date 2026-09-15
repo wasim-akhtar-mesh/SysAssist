@@ -115,5 +115,11 @@ export const INVENTORY_THRESHOLDS: InventoryThreshold[] = [
     modelName: 'Ergonomic Mice',
     minQuantity: 2,
     criticalThreshold: 1
+  },
+  {
+    category: 'Audio/Headset',
+    modelName: 'ANC Headsets & Audio',
+    minQuantity: 2,
+    criticalThreshold: 1
   }
 ];

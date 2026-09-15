@@ -1,14 +1,16 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { 
   Asset, 
+  AssetCategory,
+  AssetStatus,
   ChangeLogEntry, 
-  JiraTicket, 
-  InventoryThreshold 
+  JiraTicket 
 } from './types';
 import { INITIAL_ASSETS, INITIAL_CHANGE_LOGS } from './data/mockAssets';
 import { INITIAL_JIRA_TICKETS, INVENTORY_THRESHOLDS } from './data/mockJira';
 import { NavigationRail, ActiveTab } from './components/NavigationRail';
 import { UtilityBar } from './components/UtilityBar';
+import { DashboardView } from './components/DashboardView';
 import { AssetListView } from './components/AssetListView';
 import { AutomatedInventoryTracker } from './components/AutomatedInventoryTracker';
 import { JiraTicketingDrawer } from './components/JiraTicketingDrawer';
@@ -16,7 +18,10 @@ import { AuditTrailView } from './components/AuditTrailView';
 import { AssetDetailModal } from './components/AssetDetailModal';
 import { BarcodeScannerModal } from './components/BarcodeScannerModal';
 import { AddAssetModal } from './components/AddAssetModal';
-import { soundFx } from './services/audioService';
+import { 
+  getCategoryStockAssessments, 
+  PERIPHERAL_CATEGORIES 
+} from './utils/inventorySelectors';
 
 const CURRENT_USER = 'Wasim Akhtar (IT Lead)';
 
@@ -58,7 +63,7 @@ export default function App() {
     }
     const aggregated = [...INITIAL_CHANGE_LOGS];
     INITIAL_ASSETS.forEach(a => {
-      a.changeLogs.forEach(l => {
+      a.changeLogs?.forEach(l => {
         if (!aggregated.some(ex => ex.id === l.id)) {
           aggregated.push(l);
         }
@@ -92,8 +97,11 @@ export default function App() {
     }
   }, [allChangeLogs]);
 
-  // UI state
-  const [activeTab, setActiveTab] = useState<ActiveTab>('inventory');
+  // UI Navigation state - Initialize on dashboard
+  const [activeTab, setActiveTab] = useState<ActiveTab>('dashboard');
+  const [laptopStatusFilter, setLaptopStatusFilter] = useState<AssetStatus | 'ALL'>('ALL');
+  const [peripheralCategoryFilter, setPeripheralCategoryFilter] = useState<AssetCategory | 'ALL'>('ALL');
+
   const [selectedAsset, setSelectedAsset] = useState<Asset | null>(null);
   const [isScannerOpen, setIsScannerOpen] = useState<boolean>(false);
   const [isAddAssetOpen, setIsAddAssetOpen] = useState<boolean>(false);
@@ -102,20 +110,23 @@ export default function App() {
   // Responsive navigation state
   const [isRailCollapsed, setIsRailCollapsed] = useState<boolean>(false);
   const [isMobileRailOpen, setIsMobileRailOpen] = useState<boolean>(false);
-  const [soundEnabled, setSoundEnabled] = useState<boolean>(true);
 
-  const toggleSound = () => {
-    const next = !soundEnabled;
-    soundFx.soundEnabled = next;
-    setSoundEnabled(next);
-    if (next) {
-      soundFx.playMechanicalClick();
-    }
-  };
+  // Dynamic calculations updated automatically with zero reload
+  const openJiraCount = useMemo(() => {
+    return jiraTickets.filter(t => t.status !== 'Fulfilled').length;
+  }, [jiraTickets]);
 
-  // Count metrics
-  const openJiraCount = jiraTickets.filter(t => t.status !== 'Fulfilled').length;
-  const lowStockCount = assets.filter(a => a.status === 'In Stock' && (a.category === 'Dock' || a.category === 'Display')).length <= 2 ? 1 : 0;
+  const lowStockCount = useMemo(() => {
+    return getCategoryStockAssessments(assets, INVENTORY_THRESHOLDS).filter(c => c.isLowStock).length;
+  }, [assets]);
+
+  const laptopCount = useMemo(() => {
+    return assets.filter(a => a.category === 'Laptop').length;
+  }, [assets]);
+
+  const peripheralCount = useMemo(() => {
+    return assets.filter(a => (PERIPHERAL_CATEGORIES as readonly string[]).includes(a.category)).length;
+  }, [assets]);
 
   // Handlers
   const handleUpdateAsset = (updatedAsset: Asset, newLog: ChangeLogEntry) => {
@@ -152,7 +163,7 @@ export default function App() {
             role: 'Hardware Requester'
           },
           linkedJiraKey: ticketKey,
-          changeLogs: [log, ...a.changeLogs]
+          changeLogs: [log, ...(a.changeLogs || [])]
         };
       }
       return a;
@@ -190,12 +201,11 @@ export default function App() {
         email: 'wasim.akhtar@meshconnect.internal',
         department: 'Hardware Operations'
       },
-      requestedEquipment: `${item.quantityToOrder}x ${item.modelName}`
+      requestedHardware: `${item.quantityToOrder}x ${item.modelName}`
     };
 
     setJiraTickets(prev => [newTicket, ...prev]);
     setActiveTab('jira');
-    soundFx.playReassignSuccess();
   };
 
   const handleSelectAssetByTag = (tag: string) => {
@@ -210,6 +220,17 @@ export default function App() {
     setIsAddAssetOpen(true);
   };
 
+  // Dashboard navigation shortcuts
+  const handleNavigateToLaptops = (statusFilter?: AssetStatus | 'ALL') => {
+    setLaptopStatusFilter(statusFilter || 'ALL');
+    setActiveTab('laptops');
+  };
+
+  const handleNavigateToPeripherals = (categoryFilter?: AssetCategory | 'ALL') => {
+    setPeripheralCategoryFilter(categoryFilter || 'ALL');
+    setActiveTab('peripherals');
+  };
+
   return (
     <div className="flex h-screen w-screen overflow-hidden bg-[#D8D7D2] text-[#181A1B] font-sans antialiased select-auto selection:bg-[#C66A2B] selection:text-white">
       
@@ -222,14 +243,14 @@ export default function App() {
           setScannerInitialBarcode('');
           setIsAddAssetOpen(true);
         }}
+        laptopCount={laptopCount}
+        peripheralCount={peripheralCount}
         openJiraCount={openJiraCount}
         lowStockCount={lowStockCount}
         totalAssetsCount={assets.length}
         currentUser={CURRENT_USER}
         isCollapsed={isRailCollapsed}
         onToggleCollapse={() => setIsRailCollapsed(!isRailCollapsed)}
-        soundEnabled={soundEnabled}
-        onToggleSound={toggleSound}
         isMobileOpen={isMobileRailOpen}
         onCloseMobile={() => setIsMobileRailOpen(false)}
       />
@@ -252,13 +273,36 @@ export default function App() {
           currentUser={CURRENT_USER}
         />
 
-        {/* Scrollable Main Workspace Content (Uses all remaining space; max-w-[2200px] only on ultrawide) */}
+        {/* Scrollable Main Workspace Content */}
         <main className="flex-1 overflow-y-auto px-3.5 sm:px-6 py-3.5 sm:py-5 w-full max-w-[2200px]">
           
-          {/* TAB 1: INVENTORY BAY */}
-          {activeTab === 'inventory' && (
-            <AssetListView
+          {/* TAB 1: DASHBOARD (Initial view) */}
+          {activeTab === 'dashboard' && (
+            <DashboardView
               assets={assets}
+              jiraTickets={jiraTickets}
+              changeLogs={allChangeLogs}
+              thresholds={INVENTORY_THRESHOLDS}
+              onNavigateToLaptops={handleNavigateToLaptops}
+              onNavigateToPeripherals={handleNavigateToPeripherals}
+              onNavigateToStock={() => setActiveTab('stock_tracker')}
+              onNavigateToJira={() => setActiveTab('jira')}
+              onNavigateToAudit={() => setActiveTab('audit_trail')}
+              onSelectAssetByTag={handleSelectAssetByTag}
+              onOpenScanner={() => setIsScannerOpen(true)}
+              onOpenAddAsset={() => {
+                setScannerInitialBarcode('');
+                setIsAddAssetOpen(true);
+              }}
+            />
+          )}
+
+          {/* TAB 2: LAPTOPS */}
+          {activeTab === 'laptops' && (
+            <AssetListView
+              section="laptops"
+              assets={assets}
+              initialStatusFilter={laptopStatusFilter}
               onSelectAsset={(asset) => setSelectedAsset(asset)}
               onOpenScanner={() => setIsScannerOpen(true)}
               onNewAssetClick={() => {
@@ -268,7 +312,22 @@ export default function App() {
             />
           )}
 
-          {/* TAB 2: STOCK RESERVES */}
+          {/* TAB 3: PERIPHERALS */}
+          {activeTab === 'peripherals' && (
+            <AssetListView
+              section="peripherals"
+              assets={assets}
+              initialCategoryFilter={peripheralCategoryFilter}
+              onSelectAsset={(asset) => setSelectedAsset(asset)}
+              onOpenScanner={() => setIsScannerOpen(true)}
+              onNewAssetClick={() => {
+                setScannerInitialBarcode('');
+                setIsAddAssetOpen(true);
+              }}
+            />
+          )}
+
+          {/* TAB 4: STOCK & PROCUREMENT */}
           {activeTab === 'stock_tracker' && (
             <AutomatedInventoryTracker
               assets={assets}
@@ -278,7 +337,7 @@ export default function App() {
             />
           )}
 
-          {/* TAB 3: JIRA CLOUD DESK */}
+          {/* TAB 5: JIRA REQUESTS */}
           {activeTab === 'jira' && (
             <JiraTicketingDrawer
               tickets={jiraTickets}
@@ -290,7 +349,7 @@ export default function App() {
             />
           )}
 
-          {/* TAB 4: AUDIT TRAIL */}
+          {/* TAB 6: AUDIT TRAIL */}
           {activeTab === 'audit_trail' && (
             <AuditTrailView
               changeLogs={allChangeLogs}
@@ -300,7 +359,7 @@ export default function App() {
         </main>
       </div>
 
-      {/* MODAL 1: Asset Inspector Drawer (Right-side drawer on desktop, sheet on mobile) */}
+      {/* MODAL 1: Asset Inspector Drawer */}
       {selectedAsset && (
         <AssetDetailModal
           asset={selectedAsset}
@@ -312,7 +371,7 @@ export default function App() {
         />
       )}
 
-      {/* MODAL 2: Barcode & Serial Scanner (Centered focused dialog) */}
+      {/* MODAL 2: Barcode & Serial Scanner */}
       <BarcodeScannerModal
         isOpen={isScannerOpen}
         onClose={() => setIsScannerOpen(false)}
@@ -321,7 +380,7 @@ export default function App() {
         onNewAssetScan={handleNewAssetFromScan}
       />
 
-      {/* MODAL 3: Hardware Intake Dialog (Centered focused dialog) */}
+      {/* MODAL 3: Hardware Intake Dialog */}
       <AddAssetModal
         isOpen={isAddAssetOpen}
         onClose={() => setIsAddAssetOpen(false)}

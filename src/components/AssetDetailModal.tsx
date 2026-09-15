@@ -21,7 +21,6 @@ import {
 } from 'lucide-react';
 import { Asset, ChangeLogEntry, JiraTicket } from '../types';
 import { AppleApiService } from '../services/appleService';
-import { soundFx } from '../services/audioService';
 import { SkeuoButton, LedIndicator, StatusBadge } from './SkeuoComponents';
 import { BarcodeLabelPlate } from './BarcodeLabelPlate';
 
@@ -80,7 +79,6 @@ export const AssetDetailModal: React.FC<AssetDetailModalProps> = ({
 
   const handleSyncApple = async () => {
     setIsSyncingApple(true);
-    soundFx.playMechanicalClick();
     try {
       const result = await AppleApiService.fetchCoverageBySerial(asset.serialNumber);
       
@@ -110,7 +108,6 @@ export const AssetDetailModal: React.FC<AssetDetailModalProps> = ({
 
       onUpdateAsset(updated, newLog);
       setAppleSyncSuccess(true);
-      soundFx.playReassignSuccess();
       setTimeout(() => setAppleSyncSuccess(false), 3000);
     } finally {
       setIsSyncingApple(false);
@@ -156,7 +153,6 @@ export const AssetDetailModal: React.FC<AssetDetailModalProps> = ({
       changeLogs: [newLog, ...asset.changeLogs]
     };
 
-    soundFx.playReassignSuccess();
     onUpdateAsset(updatedAsset, newLog);
     setIsReassigning(false);
     setActiveTab('changelog');
@@ -186,7 +182,6 @@ export const AssetDetailModal: React.FC<AssetDetailModalProps> = ({
       changeLogs: [newLog, ...asset.changeLogs]
     };
 
-    soundFx.playMechanicalClick();
     onUpdateAsset(updatedAsset, newLog);
     setActiveTab('changelog');
   };
@@ -233,7 +228,7 @@ export const AssetDetailModal: React.FC<AssetDetailModalProps> = ({
         {/* Drawer Navigation Tabs */}
         <div className="px-3 pt-2 pb-2 border-b border-[#D8D6CF] bg-[#EAE8E2] flex items-center gap-1 overflow-x-auto shrink-0 text-xs">
           <button
-            onClick={() => { soundFx.playMechanicalClick(); setActiveTab('overview'); }}
+            onClick={() => { setActiveTab('overview'); }}
             className={`px-2.5 py-1.5 rounded text-xs font-medium flex items-center gap-1.5 transition-all cursor-pointer whitespace-nowrap ${
               activeTab === 'overview'
                 ? 'bg-[#FAF9F5] text-[#C66A2B] shadow-xs font-semibold'
@@ -246,7 +241,7 @@ export const AssetDetailModal: React.FC<AssetDetailModalProps> = ({
 
           {isApple && (
             <button
-              onClick={() => { soundFx.playMechanicalClick(); setActiveTab('apple'); }}
+              onClick={() => { setActiveTab('apple'); }}
               className={`px-2.5 py-1.5 rounded text-xs font-medium flex items-center gap-1.5 transition-all cursor-pointer whitespace-nowrap ${
                 activeTab === 'apple'
                   ? 'bg-[#FAF9F5] text-[#C66A2B] shadow-xs font-semibold'
@@ -259,7 +254,7 @@ export const AssetDetailModal: React.FC<AssetDetailModalProps> = ({
           )}
 
           <button
-            onClick={() => { soundFx.playMechanicalClick(); setActiveTab('changelog'); }}
+            onClick={() => { setActiveTab('changelog'); }}
             className={`px-2.5 py-1.5 rounded text-xs font-medium flex items-center gap-1.5 transition-all cursor-pointer whitespace-nowrap ${
               activeTab === 'changelog'
                 ? 'bg-[#FAF9F5] text-[#C66A2B] shadow-xs font-semibold'
@@ -271,7 +266,7 @@ export const AssetDetailModal: React.FC<AssetDetailModalProps> = ({
           </button>
 
           <button
-            onClick={() => { soundFx.playMechanicalClick(); setActiveTab('label'); }}
+            onClick={() => { setActiveTab('label'); }}
             className={`px-2.5 py-1.5 rounded text-xs font-medium flex items-center gap-1.5 transition-all cursor-pointer whitespace-nowrap ${
               activeTab === 'label'
                 ? 'bg-[#FAF9F5] text-[#C66A2B] shadow-xs font-semibold'

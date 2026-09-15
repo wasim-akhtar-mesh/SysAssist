@@ -3,7 +3,6 @@ import JsBarcode from 'jsbarcode';
 import { Asset } from '../types';
 import { SkeuoButton } from './SkeuoComponents';
 import { Printer } from 'lucide-react';
-import { soundFx } from '../services/audioService';
 
 interface BarcodeLabelPlateProps {
   asset: Asset;
@@ -34,7 +33,6 @@ export const BarcodeLabelPlate: React.FC<BarcodeLabelPlateProps> = ({ asset, sho
   }, [asset.barcode]);
 
   const handlePrint = () => {
-    soundFx.playMechanicalClick();
     const printWindow = window.open('', '_blank');
     if (!printWindow) return;
 

@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Camera, X, Scan, RefreshCw, AlertCircle, CheckCircle, Search, Laptop } from 'lucide-react';
 import { Asset } from '../types';
-import { soundFx } from '../services/audioService';
 import { SkeuoButton, LedIndicator } from './SkeuoComponents';
 
 interface BarcodeScannerModalProps {
@@ -99,7 +98,6 @@ export const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({
     );
 
     if (found) {
-      soundFx.playScanBeep();
       setDetectedAsset(found);
       setScanStatus('success');
       setTimeout(() => {
@@ -107,7 +105,6 @@ export const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({
         onClose();
       }, 700);
     } else {
-      soundFx.playScanError();
       setScanStatus('not_found');
     }
   };

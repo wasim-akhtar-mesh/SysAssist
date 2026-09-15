@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { 
   Laptop, 
   Monitor, 
@@ -18,14 +18,21 @@ import {
   ArrowRight,
   HardDrive,
   Cpu,
-  MapPin
+  MapPin,
+  Keyboard,
+  Mouse,
+  Headphones,
+  Radio
 } from 'lucide-react';
 import { Asset, AssetCategory, AssetStatus } from '../types';
 import { SkeuoButton, LedIndicator, StatusBadge } from './SkeuoComponents';
-import { soundFx } from '../services/audioService';
+import { PERIPHERAL_CATEGORIES } from '../utils/inventorySelectors';
 
 interface AssetListViewProps {
   assets: Asset[];
+  section?: 'laptops' | 'peripherals' | 'all';
+  initialCategoryFilter?: AssetCategory | 'ALL';
+  initialStatusFilter?: AssetStatus | 'ALL';
   onSelectAsset: (asset: Asset) => void;
   onOpenScanner: () => void;
   onNewAssetClick: () => void;
@@ -33,27 +40,73 @@ interface AssetListViewProps {
 
 export const AssetListView: React.FC<AssetListViewProps> = ({
   assets,
+  section = 'all',
+  initialCategoryFilter = 'ALL',
+  initialStatusFilter = 'ALL',
   onSelectAsset,
   onOpenScanner,
   onNewAssetClick
 }) => {
-  const [selectedCategory, setSelectedCategory] = useState<string>('ALL');
-  const [selectedStatus, setSelectedStatus] = useState<string>('ALL');
+  const [selectedCategory, setSelectedCategory] = useState<string>(initialCategoryFilter);
+  const [selectedStatus, setSelectedStatus] = useState<string>(initialStatusFilter);
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid');
 
-  const categories = useMemo(() => [
-    { label: 'All Equipment', value: 'ALL', count: assets.length },
-    { label: 'Laptops', value: 'Laptop', count: assets.filter(a => a.category === 'Laptop').length },
-    { label: 'Displays', value: 'Display', count: assets.filter(a => a.category === 'Display').length },
-    { label: 'Docks', value: 'Dock', count: assets.filter(a => a.category === 'Dock').length },
-    { label: 'Keyboards', value: 'Keyboard', count: assets.filter(a => a.category === 'Keyboard').length },
-    { label: 'Mice', value: 'Mouse', count: assets.filter(a => a.category === 'Mouse').length },
-    { label: 'Audio', value: 'Audio/Headset', count: assets.filter(a => a.category === 'Audio/Headset').length }
-  ], [assets]);
+  // Sync state if initial props change (e.g. navigation from dashboard metric cards)
+  useEffect(() => {
+    if (initialCategoryFilter) {
+      setSelectedCategory(initialCategoryFilter);
+    }
+  }, [initialCategoryFilter]);
+
+  useEffect(() => {
+    if (initialStatusFilter) {
+      setSelectedStatus(initialStatusFilter);
+    }
+  }, [initialStatusFilter]);
+
+  // Restrict base assets based on section
+  const sectionAssets = useMemo(() => {
+    if (section === 'laptops') {
+      return assets.filter(a => a.category === 'Laptop');
+    }
+    if (section === 'peripherals') {
+      return assets.filter(a => (PERIPHERAL_CATEGORIES as readonly string[]).includes(a.category));
+    }
+    return assets;
+  }, [assets, section]);
+
+  const categories = useMemo(() => {
+    if (section === 'laptops') {
+      return [
+        { label: 'All Laptops', value: 'Laptop', count: sectionAssets.length }
+      ];
+    }
+    if (section === 'peripherals') {
+      return [
+        { label: 'All Peripherals', value: 'ALL', count: sectionAssets.length },
+        { label: 'Displays', value: 'Display', count: sectionAssets.filter(a => a.category === 'Display').length },
+        { label: 'Docks', value: 'Dock', count: sectionAssets.filter(a => a.category === 'Dock').length },
+        { label: 'Keyboards', value: 'Keyboard', count: sectionAssets.filter(a => a.category === 'Keyboard').length },
+        { label: 'Mice', value: 'Mouse', count: sectionAssets.filter(a => a.category === 'Mouse').length },
+        { label: 'Audio / Headsets', value: 'Audio/Headset', count: sectionAssets.filter(a => a.category === 'Audio/Headset').length },
+        { label: 'Other', value: 'Other', count: sectionAssets.filter(a => a.category === 'Other').length }
+      ];
+    }
+    return [
+      { label: 'All Equipment', value: 'ALL', count: assets.length },
+      { label: 'Laptops', value: 'Laptop', count: assets.filter(a => a.category === 'Laptop').length },
+      { label: 'Displays', value: 'Display', count: assets.filter(a => a.category === 'Display').length },
+      { label: 'Docks', value: 'Dock', count: assets.filter(a => a.category === 'Dock').length },
+      { label: 'Keyboards', value: 'Keyboard', count: assets.filter(a => a.category === 'Keyboard').length },
+      { label: 'Mice', value: 'Mouse', count: assets.filter(a => a.category === 'Mouse').length },
+      { label: 'Audio', value: 'Audio/Headset', count: assets.filter(a => a.category === 'Audio/Headset').length },
+      { label: 'Other', value: 'Other', count: assets.filter(a => a.category === 'Other').length }
+    ];
+  }, [section, sectionAssets, assets]);
 
   const filteredAssets = useMemo(() => {
-    return assets.filter(asset => {
+    return sectionAssets.filter(asset => {
       const q = searchQuery.toLowerCase().trim();
       const matchesSearch = !q || (
         asset.name.toLowerCase().includes(q) ||
@@ -65,22 +118,64 @@ export const AssetListView: React.FC<AssetListViewProps> = ({
         (asset.assignedTo && asset.assignedTo.department.toLowerCase().includes(q))
       );
 
-      const matchesCategory = selectedCategory === 'ALL' || asset.category === selectedCategory;
+      const matchesCategory = section === 'laptops' 
+        ? true 
+        : (selectedCategory === 'ALL' || asset.category === selectedCategory);
+      
       const matchesStatus = selectedStatus === 'ALL' || asset.status === selectedStatus;
 
       return matchesSearch && matchesCategory && matchesStatus;
     });
-  }, [assets, searchQuery, selectedCategory, selectedStatus]);
+  }, [sectionAssets, searchQuery, selectedCategory, selectedStatus, section]);
 
   const handleResetFilters = () => {
     setSearchQuery('');
     setSelectedCategory('ALL');
     setSelectedStatus('ALL');
-    soundFx.playMechanicalClick();
   };
+
+  const sectionHeading = useMemo(() => {
+    if (section === 'laptops') {
+      return {
+        title: 'Laptop Workstations Catalog',
+        description: 'Manage, deploy, and inspect enterprise mobile computing hardware',
+        icon: <Laptop className="w-4 h-4 text-[#C66A2B]" />
+      };
+    }
+    if (section === 'peripherals') {
+      return {
+        title: 'Peripherals & Accessories Catalog',
+        description: 'Displays, thunderbolt docks, precision mice, mechanical keyboards, and headsets',
+        icon: <Monitor className="w-4 h-4 text-[#2C6E9B]" />
+      };
+    }
+    return {
+      title: 'Full Fleet Inventory Bay',
+      description: 'Comprehensive enterprise asset register and tracking',
+      icon: <Layers className="w-4 h-4 text-[#C66A2B]" />
+    };
+  }, [section]);
 
   return (
     <div className="space-y-3.5">
+      {/* Section Header */}
+      <div className="ti-surface rounded-lg p-3 border border-[#D8D6CF] flex items-center justify-between shadow-xs">
+        <div className="flex items-center gap-2.5">
+          <div className="p-1.5 rounded ti-well border border-[#C5C3BC]">
+            {sectionHeading.icon}
+          </div>
+          <div>
+            <h2 className="text-sm font-bold text-[#181A1B]">{sectionHeading.title}</h2>
+            <p className="text-[11px] text-[#686B6D]">{sectionHeading.description}</p>
+          </div>
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="font-mono text-xs px-2 py-0.5 rounded bg-[#E5E3DD] text-[#181A1B] border border-[#C5C3BC]">
+            {filteredAssets.length} of {sectionAssets.length} displayed
+          </span>
+        </div>
+      </div>
+
       {/* Single Efficient Toolbar: Search, Filters, View Modes */}
       <div className="p-2.5 rounded-lg ti-surface flex flex-wrap items-center justify-between gap-2.5">
         {/* Search Input */}
@@ -108,19 +203,21 @@ export const AssetListView: React.FC<AssetListViewProps> = ({
 
         {/* Filters Group: Category, Status, View Mode */}
         <div className="flex items-center gap-2 shrink-0 flex-wrap">
-          {/* Category Dropdown */}
-          <select
-            value={selectedCategory}
-            onChange={(e) => setSelectedCategory(e.target.value)}
-            className="h-8.5 px-2.5 rounded ti-btn text-xs font-sans text-[#181A1B] border border-[#CFCDBF] focus:outline-2 focus:outline-[#2C6E9B] cursor-pointer"
-            aria-label="Filter by category"
-          >
-            {categories.map(cat => (
-              <option key={cat.value} value={cat.value}>
-                {cat.label} ({cat.count})
-              </option>
-            ))}
-          </select>
+          {/* Category Dropdown (Only show if multiple categories) */}
+          {section !== 'laptops' && (
+            <select
+              value={selectedCategory}
+              onChange={(e) => setSelectedCategory(e.target.value)}
+              className="h-8.5 px-2.5 rounded ti-btn text-xs font-sans text-[#181A1B] border border-[#CFCDBF] focus:outline-2 focus:outline-[#2C6E9B] cursor-pointer"
+              aria-label="Filter by category"
+            >
+              {categories.map(cat => (
+                <option key={cat.value} value={cat.value}>
+                  {cat.label} ({cat.count})
+                </option>
+              ))}
+            </select>
+          )}
 
           {/* Status Dropdown */}
           <select
@@ -129,16 +226,16 @@ export const AssetListView: React.FC<AssetListViewProps> = ({
             className="h-8.5 px-2.5 rounded ti-btn text-xs font-sans text-[#181A1B] border border-[#CFCDBF] focus:outline-2 focus:outline-[#2C6E9B] cursor-pointer"
             aria-label="Filter by status"
           >
-            <option value="ALL">All Statuses ({assets.length})</option>
-            <option value="In Stock">In Stock ({assets.filter(a => a.status === 'In Stock').length})</option>
-            <option value="In Use">In Field Use ({assets.filter(a => a.status === 'In Use').length})</option>
-            <option value="Maintenance">Maintenance ({assets.filter(a => a.status === 'Maintenance').length})</option>
+            <option value="ALL">All Statuses ({sectionAssets.length})</option>
+            <option value="In Stock">In Stock ({sectionAssets.filter(a => a.status === 'In Stock').length})</option>
+            <option value="In Use">In Field Use ({sectionAssets.filter(a => a.status === 'In Use').length})</option>
+            <option value="Maintenance">Maintenance ({sectionAssets.filter(a => a.status === 'Maintenance').length})</option>
           </select>
 
           {/* View Mode Toggle */}
           <div className="flex items-center p-0.5 rounded ti-well border border-[#C5C3BC]">
             <button
-              onClick={() => { soundFx.playMechanicalClick(); setViewMode('grid'); }}
+              onClick={() => { setViewMode('grid'); }}
               className={`p-1 rounded text-xs cursor-pointer transition-all ${
                 viewMode === 'grid' ? 'bg-[#FAF9F5] text-[#C66A2B] shadow-xs font-medium' : 'text-[#686B6D] hover:text-[#181A1B]'
               }`}
@@ -148,7 +245,7 @@ export const AssetListView: React.FC<AssetListViewProps> = ({
               <LayoutGrid className="w-3.5 h-3.5" />
             </button>
             <button
-              onClick={() => { soundFx.playMechanicalClick(); setViewMode('table'); }}
+              onClick={() => { setViewMode('table'); }}
               className={`p-1 rounded text-xs cursor-pointer transition-all ${
                 viewMode === 'table' ? 'bg-[#FAF9F5] text-[#C66A2B] shadow-xs font-medium' : 'text-[#686B6D] hover:text-[#181A1B]'
               }`}
@@ -171,38 +268,71 @@ export const AssetListView: React.FC<AssetListViewProps> = ({
         </div>
       </div>
 
-      {/* Category Horizontal Quick Filters */}
-      <div className="flex items-center gap-1.5 overflow-x-auto pb-1 max-w-full text-xs">
-        {categories.map(cat => {
-          const isSelected = selectedCategory === cat.value;
-          return (
-            <button
-              key={cat.value}
-              onClick={() => {
-                soundFx.playMechanicalClick();
-                setSelectedCategory(cat.value);
-              }}
-              className={`px-2.5 py-1 rounded text-xs font-medium whitespace-nowrap transition-all cursor-pointer ${
-                isSelected
-                  ? 'bg-[#151719] text-[#FAF9F5] shadow-xs'
-                  : 'ti-btn text-[#505457] hover:text-[#181A1B]'
-              }`}
-            >
-              <span>{cat.label}</span>
-              <span className={`ml-1.5 text-[10px] px-1 py-0.2 rounded font-mono ${
-                isSelected ? 'bg-[#2E333A] text-[#C66A2B]' : 'text-[#7A7D80]'
-              }`}>
-                {cat.count}
-              </span>
-            </button>
-          );
-        })}
-      </div>
+      {/* Category Horizontal Quick Filters (if in peripherals section) */}
+      {section === 'peripherals' && (
+        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 max-w-full text-xs">
+          {categories.map(cat => {
+            const isSelected = selectedCategory === cat.value;
+            return (
+              <button
+                key={cat.value}
+                onClick={() => {
+                  setSelectedCategory(cat.value);
+                }}
+                className={`px-2.5 py-1 rounded text-xs font-medium whitespace-nowrap transition-all cursor-pointer ${
+                  isSelected
+                    ? 'bg-[#151719] text-[#FAF9F5] shadow-xs'
+                    : 'ti-btn text-[#505457] hover:text-[#181A1B]'
+                }`}
+              >
+                <span>{cat.label}</span>
+                <span className={`ml-1.5 text-[10px] px-1 py-0.2 rounded font-mono ${
+                  isSelected ? 'bg-[#2E333A] text-[#C66A2B]' : 'text-[#7A7D80]'
+                }`}>
+                  {cat.count}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Status Horizontal Quick Filters (if in laptops section) */}
+      {section === 'laptops' && (
+        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 max-w-full text-xs">
+          {[
+            { label: 'All Laptops', value: 'ALL', count: sectionAssets.length },
+            { label: 'In Stock (Available)', value: 'In Stock', count: sectionAssets.filter(a => a.status === 'In Stock').length },
+            { label: 'In Use (Assigned)', value: 'In Use', count: sectionAssets.filter(a => a.status === 'In Use').length },
+            { label: 'Maintenance', value: 'Maintenance', count: sectionAssets.filter(a => a.status === 'Maintenance').length }
+          ].map(st => {
+            const isSelected = selectedStatus === st.value;
+            return (
+              <button
+                key={st.value}
+                onClick={() => setSelectedStatus(st.value)}
+                className={`px-2.5 py-1 rounded text-xs font-medium whitespace-nowrap transition-all cursor-pointer ${
+                  isSelected
+                    ? 'bg-[#151719] text-[#FAF9F5] shadow-xs'
+                    : 'ti-btn text-[#505457] hover:text-[#181A1B]'
+                }`}
+              >
+                <span>{st.label}</span>
+                <span className={`ml-1.5 text-[10px] px-1 py-0.2 rounded font-mono ${
+                  isSelected ? 'bg-[#2E333A] text-[#C66A2B]' : 'text-[#7A7D80]'
+                }`}>
+                  {st.count}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      )}
 
       {/* Results Header Summary */}
       <div className="flex items-center justify-between text-xs text-[#686B6D] px-1">
         <span>
-          Showing <strong className="text-[#181A1B]">{filteredAssets.length}</strong> of {assets.length} devices
+          Showing <strong className="text-[#181A1B]">{filteredAssets.length}</strong> of {sectionAssets.length} devices
         </span>
         {(searchQuery || selectedCategory !== 'ALL' || selectedStatus !== 'ALL') && (
           <button
@@ -214,7 +344,7 @@ export const AssetListView: React.FC<AssetListViewProps> = ({
         )}
       </div>
 
-      {/* Grid Mode View: Fluid Grid Adaptable from 3 (1280px) to 6 (ultrawide) */}
+      {/* Grid Mode View */}
       {viewMode === 'grid' ? (
         filteredAssets.length === 0 ? (
           <div className="p-12 text-center ti-surface rounded-lg border border-[#D8D6CF]">
@@ -246,7 +376,6 @@ export const AssetListView: React.FC<AssetListViewProps> = ({
                 <div
                   key={asset.id}
                   onClick={() => {
-                    soundFx.playMechanicalClick();
                     onSelectAsset(asset);
                   }}
                   className="ti-card rounded-lg p-3.5 cursor-pointer flex flex-col justify-between group"
@@ -278,63 +407,65 @@ export const AssetListView: React.FC<AssetListViewProps> = ({
                       <h4 className="text-xs font-semibold text-[#181A1B] group-hover:text-[#C66A2B] transition-colors leading-tight line-clamp-1">
                         {asset.name}
                       </h4>
-                      <div className="text-[11px] text-[#686B6D] truncate mt-0.5 font-sans">
-                        {asset.model}
+                      <div className="text-[11px] text-[#686B6D] truncate mt-0.5">
+                        {asset.manufacturer} • {asset.model}
                       </div>
                     </div>
 
-                    {/* Information-Dense Hardware Specs */}
-                    <div className="p-2 rounded ti-well mb-2.5 text-[11px] space-y-1">
-                      <div className="flex items-center justify-between gap-2">
-                        <span className="text-[#686B6D] flex items-center gap-1">
-                          <Cpu className="w-3 h-3 text-[#7A7D80]" /> CPU
-                        </span>
-                        <span className="font-mono text-[#181A1B] font-medium truncate max-w-[170px] text-right">
-                          {asset.specs.processor.split('(')[0].trim()}
-                        </span>
-                      </div>
-                      <div className="flex items-center justify-between gap-2">
-                        <span className="text-[#686B6D] flex items-center gap-1">
-                          <HardDrive className="w-3 h-3 text-[#7A7D80]" /> RAM / Disk
-                        </span>
-                        <span className="font-mono text-[#181A1B] font-medium text-right">
-                          {asset.specs.ram.split(' ')[0]} GB • {asset.specs.storage.split(' ')[0]} {asset.specs.storage.includes('TB') ? 'TB' : 'GB'}
-                        </span>
-                      </div>
-                    </div>
-
-                    {/* Custody Assignment */}
-                    <div className="flex items-center gap-2 mb-2 text-xs">
-                      <div className="w-5 h-5 rounded-full bg-[#E5E3DD] border border-[#C7C5BE] flex items-center justify-center text-[#505457] shrink-0">
-                        <User className="w-3 h-3" />
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        {asset.assignedTo ? (
-                          <div className="flex items-baseline justify-between gap-1">
-                            <span className="font-medium text-[#181A1B] truncate text-[11px]">
-                              {asset.assignedTo.name}
-                            </span>
-                            <span className="text-[10px] text-[#686B6D] truncate">
-                              {asset.assignedTo.department}
-                            </span>
-                          </div>
-                        ) : (
-                          <span className="text-[11px] text-[#0F682C] font-medium">
-                            Unassigned • In Depot
+                    {/* Specifications or Category Details */}
+                    <div className="p-2 rounded ti-well mb-3 space-y-1 text-[11px]">
+                      {asset.specs?.processor && (
+                        <div className="flex items-center justify-between text-[#505457]">
+                          <span className="text-[#7A7D80]">CPU:</span>
+                          <span className="font-medium text-[#181A1B] truncate max-w-[170px]">
+                            {asset.specs.processor}
                           </span>
-                        )}
+                        </div>
+                      )}
+                      {asset.specs?.ram && (
+                        <div className="flex items-center justify-between text-[#505457]">
+                          <span className="text-[#7A7D80]">RAM:</span>
+                          <span className="font-mono font-medium text-[#181A1B]">
+                            {asset.specs.ram}
+                          </span>
+                        </div>
+                      )}
+                      {asset.specs?.storage && (
+                        <div className="flex items-center justify-between text-[#505457]">
+                          <span className="text-[#7A7D80]">Storage:</span>
+                          <span className="font-mono font-medium text-[#181A1B]">
+                            {asset.specs.storage}
+                          </span>
+                        </div>
+                      )}
+                      <div className="flex items-center justify-between text-[#505457]">
+                        <span className="text-[#7A7D80]">Location:</span>
+                        <span className="truncate max-w-[170px] text-[#181A1B]">
+                          {asset.location}
+                        </span>
                       </div>
                     </div>
                   </div>
 
-                  {/* Card Footer: Serial, Warranty Indicator & Inspector Arrow */}
-                  <div className="pt-2 border-t border-[#E8E6DF] flex items-center justify-between text-[11px] mt-1 text-[#686B6D]">
-                    <div className="flex items-center gap-1.5 font-mono text-[10px] truncate max-w-[180px]">
-                      <Tag className="w-3 h-3 text-[#8A8C8E]" />
-                      <span className="truncate">{asset.serialNumber}</span>
+                  {/* Custody Assignment Footer */}
+                  <div className="pt-2.5 border-t border-[#E8E6DF] flex items-center justify-between text-xs">
+                    <div className="min-w-0 flex-1">
+                      {asset.assignedTo ? (
+                        <div className="flex items-center gap-1.5">
+                          <User className="w-3.5 h-3.5 text-[#1956A6] shrink-0" />
+                          <span className="truncate font-medium text-[#181A1B] text-[11px]">
+                            {asset.assignedTo.name}
+                          </span>
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-1 text-[#0F682C] text-[11px] font-medium">
+                          <CheckCircle2 className="w-3.5 h-3.5" />
+                          <span>In Stock (IT Depot)</span>
+                        </div>
+                      )}
                     </div>
 
-                    <div className="flex items-center gap-1 text-[#C66A2B] font-sans text-xs font-medium group-hover:translate-x-0.5 transition-transform">
+                    <div className="flex items-center gap-1 text-[#C66A2B] group-hover:translate-x-0.5 transition-transform text-[11px] font-medium shrink-0">
                       <span>Inspect</span>
                       <ArrowRight className="w-3 h-3" />
                     </div>
@@ -345,8 +476,8 @@ export const AssetListView: React.FC<AssetListViewProps> = ({
           </div>
         )
       ) : (
-        /* Full-Width High-Density Table View */
-        <div className="ti-surface rounded-lg overflow-hidden border border-[#D8D6CF]">
+        /* Table Mode View */
+        <div className="ti-surface rounded-lg border border-[#D8D6CF] overflow-hidden">
           <div className="overflow-x-auto w-full">
             <table className="w-full text-left text-xs border-collapse">
               <thead>
@@ -366,7 +497,6 @@ export const AssetListView: React.FC<AssetListViewProps> = ({
                   <tr
                     key={asset.id}
                     onClick={() => {
-                      soundFx.playMechanicalClick();
                       onSelectAsset(asset);
                     }}
                     className="hover:bg-[#FAF9F5] transition-colors cursor-pointer"
@@ -387,7 +517,7 @@ export const AssetListView: React.FC<AssetListViewProps> = ({
                       <StatusBadge status={asset.status} />
                     </td>
                     <td className="py-2.5 px-3 font-mono text-[11px] text-[#505457] max-w-[180px] truncate">
-                      {asset.specs.processor.split('(')[0].trim()} • {asset.specs.ram.split(' ')[0]}GB
+                      {[asset.specs?.processor?.split('(')[0]?.trim(), asset.specs?.ram, asset.specs?.storage].filter(Boolean).join(' • ') || '—'}
                     </td>
                     <td className="py-2.5 px-3 text-xs whitespace-nowrap">
                       {asset.assignedTo ? (
@@ -407,7 +537,6 @@ export const AssetListView: React.FC<AssetListViewProps> = ({
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
-                          soundFx.playMechanicalClick();
                           onSelectAsset(asset);
                         }}
                         className="px-2 py-1 rounded ti-btn text-xs font-medium text-[#C66A2B] hover:text-[#B55E22] inline-flex items-center gap-1 cursor-pointer"

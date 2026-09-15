@@ -21,7 +21,6 @@ import {
 } from 'lucide-react';
 import { JiraTicket, Asset, ChangeLogEntry } from '../types';
 import { SkeuoButton, LedIndicator, StatusBadge } from './SkeuoComponents';
-import { soundFx } from '../services/audioService';
 
 interface JiraTicketingViewProps {
   tickets: JiraTicket[];
@@ -103,7 +102,6 @@ export const JiraTicketingDrawer: React.FC<JiraTicketingViewProps> = ({
       requestedHardware: hardwareType
     };
 
-    soundFx.playReassignSuccess();
     onCreateTicket(newTicket);
     setSelectedTicketKey(newKey);
     setActiveView('details');
@@ -139,7 +137,6 @@ export const JiraTicketingDrawer: React.FC<JiraTicketingViewProps> = ({
       jiraTicketKey: fulfillingTicket.key
     };
 
-    soundFx.playReassignSuccess();
     onFulfillTicket(fulfillingTicket.key, targetAsset.id, newLog);
     setFulfillingTicket(null);
     setSelectedAssetId('');
@@ -174,7 +171,7 @@ export const JiraTicketingDrawer: React.FC<JiraTicketingViewProps> = ({
             size="sm"
             variant="standard"
             activeState={activeView === 'details'}
-            onClick={() => { soundFx.playMechanicalClick(); setActiveView('details'); }}
+            onClick={() => { setActiveView('details'); }}
           >
             Requests ({tickets.filter(t => t.status !== 'Fulfilled').length} Pending)
           </SkeuoButton>
@@ -183,7 +180,7 @@ export const JiraTicketingDrawer: React.FC<JiraTicketingViewProps> = ({
             size="sm"
             variant="standard"
             activeState={activeView === 'new_ticket'}
-            onClick={() => { soundFx.playMechanicalClick(); setActiveView('new_ticket'); }}
+            onClick={() => { setActiveView('new_ticket'); }}
             icon={<Plus className="w-3.5 h-3.5 text-[#C66A2B]" />}
           >
             New Request
@@ -193,7 +190,7 @@ export const JiraTicketingDrawer: React.FC<JiraTicketingViewProps> = ({
             size="sm"
             variant="standard"
             activeState={activeView === 'settings'}
-            onClick={() => { soundFx.playMechanicalClick(); setActiveView('settings'); }}
+            onClick={() => { setActiveView('settings'); }}
             icon={<Settings className="w-3.5 h-3.5 text-[#505457]" />}
           >
             Config
@@ -247,7 +244,6 @@ export const JiraTicketingDrawer: React.FC<JiraTicketingViewProps> = ({
                   <div
                     key={ticket.key}
                     onClick={() => {
-                      soundFx.playMechanicalClick();
                       setSelectedTicketKey(ticket.key);
                     }}
                     className={`p-2.5 rounded-md cursor-pointer transition-all border ${
@@ -308,7 +304,6 @@ export const JiraTicketingDrawer: React.FC<JiraTicketingViewProps> = ({
                       size="sm"
                       variant="primary"
                       onClick={() => {
-                        soundFx.playMechanicalClick();
                         setFulfillingTicket(selectedTicket);
                       }}
                       icon={<CheckCircle2 className="w-4 h-4" />}

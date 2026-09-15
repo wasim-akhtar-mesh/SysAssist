@@ -1,38 +1,36 @@
 import React from 'react';
 import { 
+  LayoutDashboard,
   Laptop, 
+  Monitor,
   Boxes, 
   Layers, 
   History, 
   Scan, 
   Plus, 
-  Volume2, 
-  VolumeX, 
   User, 
   ChevronLeft, 
   ChevronRight,
-  Database,
   X
 } from 'lucide-react';
-import { SysAssistRailLockup, SysAssistSymbol } from './BrandLogo';
+import { SysAssistRailLockup } from './BrandLogo';
 import { LedIndicator } from './SkeuoComponents';
-import { soundFx } from '../services/audioService';
 
-export type ActiveTab = 'inventory' | 'stock_tracker' | 'jira' | 'audit_trail';
+export type ActiveTab = 'dashboard' | 'laptops' | 'peripherals' | 'stock_tracker' | 'jira' | 'audit_trail';
 
 interface NavigationRailProps {
   activeTab: ActiveTab;
   onSelectTab: (tab: ActiveTab) => void;
   onOpenScanner: () => void;
   onOpenAddAsset: () => void;
+  laptopCount: number;
+  peripheralCount: number;
   openJiraCount: number;
   lowStockCount: number;
   totalAssetsCount: number;
   currentUser: string;
   isCollapsed: boolean;
   onToggleCollapse: () => void;
-  soundEnabled: boolean;
-  onToggleSound: () => void;
   isMobileOpen?: boolean;
   onCloseMobile?: () => void;
 }
@@ -42,36 +40,49 @@ export const NavigationRail: React.FC<NavigationRailProps> = ({
   onSelectTab,
   onOpenScanner,
   onOpenAddAsset,
+  laptopCount,
+  peripheralCount,
   openJiraCount,
   lowStockCount,
   totalAssetsCount,
   currentUser,
   isCollapsed,
   onToggleCollapse,
-  soundEnabled,
-  onToggleSound,
   isMobileOpen = false,
   onCloseMobile
 }) => {
   const navItems = [
     {
-      id: 'inventory' as const,
-      label: 'Inventory Bay',
-      shortLabel: 'Inventory',
-      count: totalAssetsCount,
+      id: 'dashboard' as const,
+      label: 'Dashboard',
+      shortLabel: 'Dashboard',
+      icon: <LayoutDashboard className="w-4 h-4 shrink-0" />
+    },
+    {
+      id: 'laptops' as const,
+      label: 'Laptops',
+      shortLabel: 'Laptops',
+      count: laptopCount,
       icon: <Laptop className="w-4 h-4 shrink-0" />
     },
     {
+      id: 'peripherals' as const,
+      label: 'Peripherals',
+      shortLabel: 'Peripherals',
+      count: peripheralCount,
+      icon: <Monitor className="w-4 h-4 shrink-0" />
+    },
+    {
       id: 'stock_tracker' as const,
-      label: 'Stock Reserves',
-      shortLabel: 'Reserves',
+      label: 'Stock & Procurement',
+      shortLabel: 'Stock',
       badge: lowStockCount > 0 ? `${lowStockCount} Low` : undefined,
       badgeColor: 'amber' as const,
       icon: <Boxes className="w-4 h-4 shrink-0" />
     },
     {
       id: 'jira' as const,
-      label: 'Jira Cloud Desk',
+      label: 'Jira Requests',
       shortLabel: 'Jira',
       badge: openJiraCount > 0 ? `${openJiraCount}` : undefined,
       badgeColor: 'blue' as const,
@@ -86,7 +97,6 @@ export const NavigationRail: React.FC<NavigationRailProps> = ({
   ];
 
   const handleNavClick = (tab: ActiveTab) => {
-    soundFx.playMechanicalClick();
     onSelectTab(tab);
     if (onCloseMobile) {
       onCloseMobile();
@@ -130,10 +140,10 @@ export const NavigationRail: React.FC<NavigationRailProps> = ({
             <div className="px-2.5 py-1.5 rounded bg-[#1C1F23] border border-[#2B3036] flex items-center justify-between text-[11px]">
               <div className="flex items-center gap-1.5">
                 <LedIndicator color="green" size="sm" />
-                <span className="text-[#9A9DA1] font-medium">Telemetry Node</span>
+                <span className="text-[#9A9DA1] font-medium">Telemetry Online</span>
               </div>
               <span className="font-mono text-[10px] text-[#C66A2B] font-semibold tracking-wider">
-                ACTIVE
+                {totalAssetsCount} ASSETS
               </span>
             </div>
           </div>
@@ -200,7 +210,6 @@ export const NavigationRail: React.FC<NavigationRailProps> = ({
           {/* Quick Scanner Action */}
           <button
             onClick={() => {
-              soundFx.playMechanicalClick();
               onOpenScanner();
               if (onCloseMobile) onCloseMobile();
             }}
@@ -210,13 +219,12 @@ export const NavigationRail: React.FC<NavigationRailProps> = ({
             title="Scan asset barcode or serial"
           >
             <Scan className="w-4 h-4 shrink-0" />
-            {!isCollapsed && <span>Barcode Scanner</span>}
+            {!isCollapsed && <span>Scan Asset</span>}
           </button>
 
           {/* Add Hardware Action */}
           <button
             onClick={() => {
-              soundFx.playMechanicalClick();
               onOpenAddAsset();
               if (onCloseMobile) onCloseMobile();
             }}
@@ -235,7 +243,7 @@ export const NavigationRail: React.FC<NavigationRailProps> = ({
       <div className="p-2 border-t border-[#23272B]">
         {/* Operator Info */}
         {!isCollapsed ? (
-          <div className="p-2 rounded bg-[#181B1E] border border-[#272B30] flex items-center gap-2.5 mb-2">
+          <div className="p-2 rounded bg-[#181B1E] border border-[#272B30] flex items-center gap-2.5 mb-1">
             <div className="w-6 h-6 rounded-full bg-[#272B31] border border-[#3A4048] flex items-center justify-center text-[#E2E0D8] shrink-0">
               <User className="w-3 h-3" />
             </div>
@@ -250,39 +258,18 @@ export const NavigationRail: React.FC<NavigationRailProps> = ({
             </div>
           </div>
         ) : (
-          <div className="flex justify-center mb-2" title={`Operator: ${currentUser}`}>
+          <div className="flex justify-center mb-1" title={`Operator: ${currentUser}`}>
             <div className="w-7 h-7 rounded-full bg-[#272B31] border border-[#3A4048] flex items-center justify-center text-[#E2E0D8]">
               <User className="w-3.5 h-3.5" />
             </div>
           </div>
         )}
 
-        {/* Controls Row: Sound Toggle & System indicator */}
-        <div className={`flex items-center ${isCollapsed ? 'justify-center' : 'justify-between px-1'}`}>
-          <button
-            onClick={onToggleSound}
-            className="flex items-center gap-1.5 p-1.5 rounded text-[#7B7F83] hover:text-[#FAF9F5] hover:bg-[#202428] text-xs transition-colors cursor-pointer"
-            title={soundEnabled ? 'Tactile Audio: Enabled (Click to Mute)' : 'Tactile Audio: Muted'}
-            aria-label={soundEnabled ? 'Mute audio' : 'Enable audio'}
-          >
-            {soundEnabled ? (
-              <Volume2 className="w-3.5 h-3.5 text-[#C66A2B]" />
-            ) : (
-              <VolumeX className="w-3.5 h-3.5 text-[#65686B]" />
-            )}
-            {!isCollapsed && (
-              <span className="text-[11px] font-sans">
-                {soundEnabled ? 'Audio On' : 'Muted'}
-              </span>
-            )}
-          </button>
-
-          {!isCollapsed && (
-            <span className="text-[10px] font-mono text-[#585B5E]">
-              REV. 2026.4
-            </span>
-          )}
-        </div>
+        {!isCollapsed && (
+          <div className="px-2 py-1 text-[10px] font-mono text-[#585B5E] text-center">
+            SYSASSIST • WORKSTATION
+          </div>
+        )}
       </div>
     </div>
   );
