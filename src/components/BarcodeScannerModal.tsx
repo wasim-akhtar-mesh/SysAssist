@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Camera, X, Scan, Zap, RefreshCw, AlertCircle, CheckCircle, Search, Laptop, Monitor, Radio } from 'lucide-react';
+import { Camera, X, Scan, RefreshCw, AlertCircle, CheckCircle, Search, Laptop } from 'lucide-react';
 import { Asset } from '../types';
 import { soundFx } from '../services/audioService';
-import { SkeuoButton, LedIndicator, ScrewHead } from './SkeuoComponents';
+import { SkeuoButton, LedIndicator } from './SkeuoComponents';
 
 interface BarcodeScannerModalProps {
   isOpen: boolean;
@@ -25,10 +25,20 @@ export const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({
   const [manualInput, setManualInput] = useState<string>('');
   const [scanStatus, setScanStatus] = useState<'idle' | 'scanning' | 'success' | 'not_found'>('idle');
   const [detectedAsset, setDetectedAsset] = useState<Asset | null>(null);
-  const [isTorchOn, setIsTorchOn] = useState<boolean>(false);
   const streamRef = useRef<MediaStream | null>(null);
 
-  // Initialize camera stream
+  // Close on Escape
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && isOpen) {
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, onClose]);
+
+  // Camera stream lifecycle
   useEffect(() => {
     if (!isOpen) {
       stopCamera();
@@ -113,25 +123,26 @@ export const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md animate-fade-in">
-      {/* Skeuomorphic Scanner Enclosure */}
-      <div className="w-full max-w-2xl skeuo-metal-panel rounded-2xl p-6 relative flex flex-col border-2 border-[#333b49] shadow-[0_25px_60px_-15px_rgba(0,0,0,0.95)]">
+    <div 
+      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-black/80 backdrop-blur-sm animate-fade-in"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="scanner-modal-title"
+    >
+      <div className="w-full max-w-2xl instrument-panel rounded-2xl p-5 sm:p-6 relative flex flex-col border border-white/[0.09] shadow-2xl max-h-[92vh] overflow-y-auto">
         
-        {/* Chassis corner screws */}
-        <div className="absolute top-3.5 left-3.5"><ScrewHead rotation={28} /></div>
-        <div className="absolute top-3.5 right-3.5"><ScrewHead rotation={112} /></div>
-        <div className="absolute bottom-3.5 left-3.5"><ScrewHead rotation={74} /></div>
-        <div className="absolute bottom-3.5 right-3.5"><ScrewHead rotation={195} /></div>
-
-        {/* Scanner Head Bar */}
-        <div className="flex items-center justify-between pb-4 border-b border-white/10 mb-4 px-2">
+        {/* Scanner Header */}
+        <div className="flex items-center justify-between pb-3.5 border-b border-white/[0.06] mb-4">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl skeuo-recessed flex items-center justify-center border border-slate-700/60">
-              <Scan className="w-5 h-5 text-sky-400 animate-pulse" />
+            <div className="w-10 h-10 rounded-xl instrument-well flex items-center justify-center border border-white/[0.05] text-blue-400">
+              <Scan className="w-5 h-5" />
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h3 className="text-base font-bold tracking-wide uppercase text-slate-100 text-engraved font-mono">
+                <h3 id="scanner-modal-title" className="text-base font-sans font-bold text-slate-100">
                   Optical Barcode & Tag Scanner
                 </h3>
                 <LedIndicator 
@@ -139,26 +150,23 @@ export const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({
                   pulse={scanStatus === 'scanning'} 
                 />
               </div>
-              <p className="text-xs text-slate-400 font-mono">
-                Model: SYS-SCN-4K • Code 128 / EAN / QR / GSX Serial
+              <p className="text-xs font-sans text-slate-400">
+                Code 128 • Code 39 • GSX Serial Number • Hardware Asset Tags
               </p>
             </div>
           </div>
 
           <button
             onClick={onClose}
-            className="w-8 h-8 rounded-lg skeuo-btn flex items-center justify-center text-slate-400 hover:text-white cursor-pointer"
+            className="w-8 h-8 rounded-lg instrument-btn flex items-center justify-center text-slate-400 hover:text-white cursor-pointer"
+            aria-label="Close scanner modal"
           >
             <X className="w-4 h-4" />
           </button>
         </div>
 
-        {/* Optical Sensor Glass Bay */}
-        <div className="relative w-full aspect-video bg-black rounded-xl overflow-hidden skeuo-recessed border-2 border-slate-700/80 flex items-center justify-center">
-          
-          {/* Glass glare effect */}
-          <div className="absolute inset-0 scanner-lens pointer-events-none z-20" />
-
+        {/* Viewfinder Bay */}
+        <div className="relative w-full aspect-video bg-black rounded-xl overflow-hidden reticle-lens flex items-center justify-center">
           {/* Camera Feed */}
           {cameraActive ? (
             <video
@@ -169,85 +177,81 @@ export const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({
             />
           ) : (
             <div className="text-center p-6 z-10 flex flex-col items-center">
-              <div className="w-14 h-14 rounded-full skeuo-recessed flex items-center justify-center border border-slate-700 mb-3">
-                <Camera className="w-7 h-7 text-slate-500" />
+              <div className="w-12 h-12 rounded-full instrument-well flex items-center justify-center border border-white/[0.05] mb-2.5 text-slate-500">
+                <Camera className="w-6 h-6" />
               </div>
-              <p className="text-sm text-slate-300 font-mono mb-1 font-semibold">
-                {cameraError ? 'Optical Stream Standby' : 'Initializing High-Speed Sensor...'}
+              <p className="text-xs font-sans text-slate-300 font-semibold mb-1">
+                {cameraError ? 'Optical Stream Offline' : 'Initializing Optical Viewfinder...'}
               </p>
-              <p className="text-xs text-slate-500 max-w-sm">
+              <p className="text-[11px] font-sans text-slate-400 max-w-sm">
                 {cameraError 
-                  ? 'Camera permission denied or device not detected. Use test presets or manual input below.'
-                  : 'Align barcode inside the red target zone for automated recognition.'}
+                  ? 'Camera permission unavailable in current browser frame. Use manual input or quick test presets below.'
+                  : 'Position the hardware barcode or serial number label inside the viewfinder reticle.'}
               </p>
               {cameraError && (
                 <div className="mt-3">
-                  <SkeuoButton size="sm" onClick={startCamera} icon={<RefreshCw className="w-3.5 h-3.5" />}>
-                    Retry Sensor
+                  <SkeuoButton size="sm" variant="standard" onClick={startCamera} icon={<RefreshCw className="w-3.5 h-3.5" />}>
+                    Retry Camera
                   </SkeuoButton>
                 </div>
               )}
             </div>
           )}
 
-          {/* Red Laser Sweep */}
-          <div className="laser-line z-30 pointer-events-none" />
+          {/* Precision Laser Sweep Line */}
+          <div className="optical-laser z-30 pointer-events-none" />
 
-          {/* Target Reticle Brackets */}
+          {/* Calibrated Target Reticle Brackets */}
           <div className="absolute inset-0 z-20 pointer-events-none flex items-center justify-center">
-            <div className="w-64 h-36 border border-sky-400/40 rounded-lg relative shadow-[0_0_15px_rgba(56,189,248,0.2)]">
-              {/* Corner Brackets */}
-              <div className="absolute -top-1 -left-1 w-4 h-4 border-t-2 border-l-2 border-sky-400" />
-              <div className="absolute -top-1 -right-1 w-4 h-4 border-t-2 border-r-2 border-sky-400" />
-              <div className="absolute -bottom-1 -left-1 w-4 h-4 border-b-2 border-l-2 border-sky-400" />
-              <div className="absolute -bottom-1 -right-1 w-4 h-4 border-b-2 border-r-2 border-sky-400" />
+            <div className="w-64 h-32 border border-blue-400/30 rounded-lg relative">
+              {/* Precision Corner Brackets */}
+              <div className="absolute -top-1 -left-1 w-3.5 h-3.5 border-t-2 border-l-2 border-blue-400" />
+              <div className="absolute -top-1 -right-1 w-3.5 h-3.5 border-t-2 border-r-2 border-blue-400" />
+              <div className="absolute -bottom-1 -left-1 w-3.5 h-3.5 border-b-2 border-l-2 border-blue-400" />
+              <div className="absolute -bottom-1 -right-1 w-3.5 h-3.5 border-b-2 border-r-2 border-blue-400" />
               
-              {/* Center Crosshair */}
-              <div className="absolute inset-0 flex items-center justify-center">
-                <div className="w-2 h-2 rounded-full bg-red-500/80 animate-ping" />
-              </div>
-
-              <div className="absolute bottom-1 right-2 text-[9px] font-mono text-sky-400/80 uppercase">
-                TARGET ACQUISITION
+              <div className="absolute bottom-1 right-2 text-[9px] font-mono text-blue-300/80">
+                CALIBRATED RETICLE
               </div>
             </div>
           </div>
 
-          {/* Status Overlay */}
+          {/* Success Result Overlay */}
           {scanStatus === 'success' && detectedAsset && (
-            <div className="absolute inset-0 z-40 bg-emerald-950/80 backdrop-blur-xs flex flex-col items-center justify-center p-4">
-              <CheckCircle className="w-12 h-12 text-emerald-400 mb-2 animate-bounce" />
-              <div className="text-base font-bold text-white font-mono">ASSET IDENTIFIED!</div>
-              <div className="text-xs text-emerald-300 font-mono mt-1">
+            <div className="absolute inset-0 z-40 bg-emerald-950/90 backdrop-blur-xs flex flex-col items-center justify-center p-4">
+              <CheckCircle className="w-10 h-10 text-emerald-400 mb-2" />
+              <div className="text-sm font-sans font-bold text-white">Hardware Asset Verified</div>
+              <div className="text-xs font-mono text-emerald-300 mt-1">
                 {detectedAsset.assetTag} • {detectedAsset.name}
               </div>
-              <div className="text-[11px] text-slate-300 font-mono mt-0.5">
-                Serial: {detectedAsset.serialNumber} • Status: {detectedAsset.status}
+              <div className="text-[11px] text-slate-300 font-sans mt-0.5">
+                Serial: <span className="font-mono">{detectedAsset.serialNumber}</span> • Status: {detectedAsset.status}
               </div>
             </div>
           )}
 
+          {/* Not Found Overlay */}
           {scanStatus === 'not_found' && (
-            <div className="absolute inset-0 z-40 bg-red-950/85 backdrop-blur-xs flex flex-col items-center justify-center p-4 text-center">
-              <AlertCircle className="w-10 h-10 text-red-400 mb-2" />
-              <div className="text-sm font-bold text-white font-mono">UNKNOWN TAG / BARCODE</div>
-              <p className="text-xs text-red-200 mt-1 max-w-xs">
-                No matching hardware found in SysAssist database for &ldquo;{manualInput}&rdquo;.
+            <div className="absolute inset-0 z-40 bg-red-950/90 backdrop-blur-xs flex flex-col items-center justify-center p-4 text-center">
+              <AlertCircle className="w-9 h-9 text-rose-400 mb-2" />
+              <div className="text-sm font-sans font-bold text-white">Unregistered Barcode / Tag</div>
+              <p className="text-xs text-rose-200 mt-1 max-w-xs font-sans">
+                No existing hardware record matches &ldquo;{manualInput}&rdquo;.
               </p>
               <div className="flex gap-2 mt-3">
-                <SkeuoButton size="sm" onClick={() => setScanStatus('scanning')}>
+                <SkeuoButton size="sm" variant="standard" onClick={() => setScanStatus('scanning')}>
                   Scan Again
                 </SkeuoButton>
                 {onNewAssetScan && (
                   <SkeuoButton 
                     size="sm" 
-                    variant="emerald" 
+                    variant="primary" 
                     onClick={() => {
                       onNewAssetScan(manualInput);
                       onClose();
                     }}
                   >
-                    Provision as New Asset
+                    Intake as New Hardware
                   </SkeuoButton>
                 )}
               </div>
@@ -255,60 +259,52 @@ export const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({
           )}
         </div>
 
-        {/* Manual Barcode / Serial Direct Input */}
-        <form onSubmit={handleManualSubmit} className="mt-4 flex gap-2">
-          <div className="relative flex-1">
-            <input
-              type="text"
-              value={manualInput}
-              onChange={(e) => setManualInput(e.target.value)}
-              placeholder="Enter Barcode, Serial (e.g. C02G4190MD6R), or Tag (AST-8821)..."
-              className="w-full h-11 px-4 skeuo-recessed rounded-xl text-sm font-mono text-sky-200 placeholder-slate-500 focus:outline-none focus:border-sky-500/80 border border-slate-700/60"
-            />
-            <Search className="w-4 h-4 text-slate-500 absolute right-3.5 top-3.5 pointer-events-none" />
-          </div>
-          <SkeuoButton type="submit" variant="accent">
-            Lookup
-          </SkeuoButton>
-        </form>
+        {/* Manual Barcode & Tag Input */}
+        <div className="mt-4 pt-3 border-t border-white/[0.06]">
+          <form onSubmit={handleManualSubmit} className="flex gap-2">
+            <div className="relative flex-1">
+              <input
+                type="text"
+                value={manualInput}
+                onChange={(e) => setManualInput(e.target.value)}
+                placeholder="Enter Asset Tag (e.g. AST-8821), Barcode, or Serial Number..."
+                className="w-full h-9 pl-9 pr-3 instrument-well rounded-lg text-xs font-mono text-slate-100 placeholder-slate-500 border border-white/[0.06] focus:border-blue-500 focus:outline-none"
+              />
+              <Search className="w-3.5 h-3.5 text-slate-500 absolute left-3 top-3 pointer-events-none" />
+            </div>
 
-        {/* Quick Test Barcode Presets */}
-        <div className="mt-4 pt-3 border-t border-white/5">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-[11px] font-mono text-slate-400 uppercase tracking-wider font-semibold">
-              Test Presets (Simulate Hardware Laser Scan):
-            </span>
-            <span className="text-[10px] text-slate-500 font-mono">
-              Click to instant-scan
-            </span>
-          </div>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-            {assets.slice(0, 4).map(asset => (
+            <SkeuoButton
+              type="submit"
+              size="sm"
+              variant="primary"
+            >
+              Verify Tag
+            </SkeuoButton>
+          </form>
+        </div>
+
+        {/* Quick Simulator Test Barcodes */}
+        <div className="mt-3 p-3 rounded-lg instrument-well">
+          <span className="text-[10px] uppercase font-sans tracking-wide text-slate-400 block mb-2 font-medium">
+            Quick Test Barcode Simulation (One-Click Verification)
+          </span>
+          <div className="flex flex-wrap gap-1.5">
+            {assets.slice(0, 4).map(sample => (
               <button
-                key={asset.id}
+                key={sample.id}
                 type="button"
-                onClick={() => processBarcodeValue(asset.barcode)}
-                className="p-2.5 rounded-lg skeuo-card border border-slate-700/60 hover:border-sky-500/50 text-left transition-all group cursor-pointer"
+                onClick={() => {
+                  setManualInput(sample.barcode);
+                  processBarcodeValue(sample.barcode);
+                }}
+                className="px-2.5 py-1 rounded-md instrument-btn text-[11px] font-mono text-slate-300 hover:text-white flex items-center gap-1.5 cursor-pointer"
               >
-                <div className="flex items-center justify-between mb-1">
-                  <span className="text-[10px] font-mono text-sky-400 font-bold">
-                    {asset.assetTag}
-                  </span>
-                  <span className="text-[9px] px-1.5 py-0.5 rounded bg-slate-800 text-slate-400 font-mono">
-                    {asset.category}
-                  </span>
-                </div>
-                <div className="text-xs font-semibold text-slate-200 truncate group-hover:text-white">
-                  {asset.name}
-                </div>
-                <div className="text-[10px] text-slate-500 font-mono truncate mt-0.5">
-                  BAR: {asset.barcode}
-                </div>
+                <span className="text-blue-300 font-bold">{sample.assetTag}</span>
+                <span className="text-slate-400 font-sans truncate max-w-[120px]">{sample.name.split(' ')[0]}</span>
               </button>
             ))}
           </div>
         </div>
-
       </div>
     </div>
   );

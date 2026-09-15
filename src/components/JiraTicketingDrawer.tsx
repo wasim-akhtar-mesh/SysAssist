@@ -1,23 +1,23 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
-  X, 
   ExternalLink, 
   Plus, 
   CheckCircle2, 
   Clock, 
   AlertTriangle, 
-  Filter, 
   Laptop, 
   ArrowRight, 
   Settings, 
   Check, 
-  Link as LinkIcon,
-  Search
+  Search,
+  X,
+  Layers,
+  UserCheck
 } from 'lucide-react';
 import { JiraTicket, Asset, ChangeLogEntry } from '../types';
 import { JiraService, DEFAULT_JIRA_CONFIG } from '../services/jiraService';
 import { soundFx } from '../services/audioService';
-import { SkeuoButton, LedIndicator, ScrewHead } from './SkeuoComponents';
+import { SkeuoButton, LedIndicator, StatusBadge } from './SkeuoComponents';
 
 interface JiraTicketingDrawerProps {
   isOpen: boolean;
@@ -59,6 +59,17 @@ export const JiraTicketingDrawer: React.FC<JiraTicketingDrawerProps> = ({
   const [jiraDomain, setJiraDomain] = useState<string>(DEFAULT_JIRA_CONFIG.domain);
   const [jiraProjectKey, setJiraProjectKey] = useState<string>(DEFAULT_JIRA_CONFIG.projectKey);
   const [savedSettingsSuccess, setSavedSettingsSuccess] = useState<boolean>(false);
+
+  // Close fulfillment modal on Escape
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && fulfillingTicket) {
+        setFulfillingTicket(null);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [fulfillingTicket]);
 
   if (!isOpen) return null;
 
@@ -107,7 +118,7 @@ export const JiraTicketingDrawer: React.FC<JiraTicketingDrawerProps> = ({
 
     const oldAssigneeLabel = targetAsset.assignedTo 
       ? `${targetAsset.assignedTo.name} (${targetAsset.assignedTo.department})` 
-      : 'IT Stock Pool (Unassigned)';
+      : 'IT Depot Pool (Unassigned)';
 
     const newAssigneeLabel = `${fulfillingTicket.requester.name} (${fulfillingTicket.requester.department})`;
 
@@ -135,434 +146,455 @@ export const JiraTicketingDrawer: React.FC<JiraTicketingDrawerProps> = ({
   const availableStockAssets = assets.filter(a => a.status === 'In Stock');
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-black/85 backdrop-blur-md overflow-y-auto">
-      <div className="w-full max-w-4xl my-auto skeuo-metal-panel rounded-2xl p-5 sm:p-7 relative border-2 border-[#374151] shadow-[0_30px_70px_rgba(0,0,0,0.95)]">
-        
-        {/* Corner rivets */}
-        <div className="absolute top-3 left-3"><ScrewHead rotation={45} /></div>
-        <div className="absolute top-3 right-3"><ScrewHead rotation={135} /></div>
-        <div className="absolute bottom-3 left-3"><ScrewHead rotation={220} /></div>
-        <div className="absolute bottom-3 right-3"><ScrewHead rotation={310} /></div>
-
-        {/* Top Header */}
-        <div className="flex flex-wrap items-center justify-between gap-3 pb-4 border-b border-white/10">
+    <div className="space-y-4">
+      {/* Top Banner / Instrument Panel */}
+      <div className="instrument-panel rounded-xl p-4 sm:p-5">
+        <div className="flex flex-wrap items-center justify-between gap-3 pb-3.5 border-b border-white/[0.06]">
           <div className="flex items-center gap-3">
-            <div className="w-11 h-11 rounded-xl bg-gradient-to-b from-blue-600 to-blue-900 border border-blue-400/40 flex items-center justify-center shadow-[0_2px_8px_rgba(37,99,235,0.4)]">
-              <span className="text-base font-black text-white font-mono">JIRA</span>
+            <div className="w-10 h-10 rounded-xl bg-blue-950/80 border border-blue-600/40 flex items-center justify-center text-blue-400">
+              <Layers className="w-5 h-5" />
             </div>
             <div>
-              <div className="flex items-center gap-2.5">
-                <h2 className="text-lg font-bold text-slate-100 font-mono uppercase tracking-wide">
-                  Atlassian Jira Hardware & Procurement Sync
+              <div className="flex items-center gap-2">
+                <h2 className="text-base font-sans font-bold text-slate-100">
+                  Jira Service Management Integration
                 </h2>
-                <LedIndicator color="green" label="LIVE SYNC" size="sm" />
+                <span className="text-[10px] font-sans font-semibold px-2 py-0.5 rounded bg-blue-950 text-blue-300 border border-blue-700/40">
+                  Sandbox Demo
+                </span>
               </div>
-              <p className="text-xs text-slate-400 font-mono">
-                Project: <strong className="text-sky-400">{jiraProjectKey}</strong> • Host: <strong className="text-slate-300">{jiraDomain}</strong>
+              <p className="text-xs font-sans text-slate-400 mt-0.5">
+                Target Project: <strong className="text-blue-300 font-mono">{jiraProjectKey}</strong> • Instance: <span className="font-mono text-slate-300">{jiraDomain}</span>
               </p>
             </div>
           </div>
 
-          <button
-            onClick={onClose}
-            className="w-8 h-8 rounded-lg skeuo-btn flex items-center justify-center text-slate-400 hover:text-white cursor-pointer"
-          >
-            <X className="w-4 h-4" />
-          </button>
+          <div className="flex items-center gap-2">
+            <LedIndicator color="blue" label="SANDBOX SYNC" size="sm" />
+          </div>
         </div>
 
-        {/* Navigation Tabs */}
-        <div className="flex items-center gap-2 border-b border-white/10 mt-4 pb-3">
+        {/* Sub Navigation Bar */}
+        <div className="flex items-center gap-2 mt-3.5 pt-1">
           <SkeuoButton
             size="sm"
             activeState={activeSubTab === 'queue'}
-            onClick={() => setActiveSubTab('queue')}
+            onClick={() => { soundFx.playMechanicalClick(); setActiveSubTab('queue'); }}
             icon={<Clock className="w-3.5 h-3.5" />}
           >
-            Hardware Requests ({tickets.filter(t => t.status !== 'Fulfilled').length} Open)
+            Request Queue ({tickets.filter(t => t.status !== 'Fulfilled').length} Open)
           </SkeuoButton>
 
           <SkeuoButton
             size="sm"
             activeState={activeSubTab === 'new_ticket'}
-            onClick={() => setActiveSubTab('new_ticket')}
+            onClick={() => { soundFx.playMechanicalClick(); setActiveSubTab('new_ticket'); }}
             icon={<Plus className="w-3.5 h-3.5" />}
           >
-            Create Jira Request
+            Create Request
           </SkeuoButton>
 
           <SkeuoButton
             size="sm"
             activeState={activeSubTab === 'settings'}
-            onClick={() => setActiveSubTab('settings')}
+            onClick={() => { soundFx.playMechanicalClick(); setActiveSubTab('settings'); }}
             icon={<Settings className="w-3.5 h-3.5" />}
           >
-            Integration Settings
+            Jira Sandbox Config
           </SkeuoButton>
         </div>
+      </div>
 
-        {/* Tab 1: Hardware Requests Queue */}
-        {activeSubTab === 'queue' && (
-          <div className="mt-5 space-y-4">
-            {/* Filter Bar */}
-            <div className="flex flex-wrap items-center justify-between gap-3 p-3 rounded-xl skeuo-recessed border border-slate-800">
-              <div className="flex items-center gap-2 flex-1 max-w-sm">
-                <Search className="w-4 h-4 text-slate-500" />
-                <input
-                  type="text"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Search tickets, requesters, keys..."
-                  className="w-full bg-transparent text-xs font-mono text-slate-200 placeholder-slate-500 focus:outline-none"
-                />
-              </div>
-
-              <div className="flex items-center gap-2">
-                <span className="text-[11px] font-mono text-slate-400 uppercase">Status:</span>
-                <select
-                  value={filterStatus}
-                  onChange={(e) => setFilterStatus(e.target.value)}
-                  className="h-8 px-2.5 skeuo-btn rounded-lg text-xs font-mono text-slate-200 focus:outline-none"
-                >
-                  <option value="all">All Statuses</option>
-                  <option value="open">Open</option>
-                  <option value="in progress">In Progress</option>
-                  <option value="fulfilled">Fulfilled</option>
-                </select>
-              </div>
+      {/* SUBTAB 1: REQUEST QUEUE */}
+      {activeSubTab === 'queue' && (
+        <div className="space-y-3">
+          {/* Filter Bar */}
+          <div className="instrument-panel rounded-xl p-3 flex flex-wrap items-center justify-between gap-3">
+            <div className="relative flex-1 min-w-[200px]">
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search requests by ticket key (SYS-1082), requester, or summary..."
+                className="w-full h-9 pl-9 pr-3 instrument-well rounded-lg text-xs font-sans text-slate-100 placeholder-slate-500 border border-white/[0.06] focus:border-blue-500 focus:outline-none"
+              />
+              <Search className="w-3.5 h-3.5 text-slate-500 absolute left-3 top-3 pointer-events-none" />
             </div>
 
-            {/* Tickets List */}
-            <div className="space-y-3">
-              {filteredTickets.length === 0 ? (
-                <div className="p-8 text-center text-xs font-mono text-slate-400 skeuo-recessed rounded-xl">
-                  No Jira tickets found matching current filter criteria.
-                </div>
-              ) : (
-                filteredTickets.map(ticket => (
+            <div className="flex items-center gap-2">
+              <select
+                value={filterStatus}
+                onChange={(e) => setFilterStatus(e.target.value)}
+                className="h-9 px-3 rounded-lg instrument-btn text-xs font-sans text-slate-200 border border-white/[0.08] focus:border-blue-500 focus:outline-none cursor-pointer"
+              >
+                <option value="all">All Statuses ({tickets.length})</option>
+                <option value="open">Open / Pending ({tickets.filter(t => t.status.toLowerCase() === 'open').length})</option>
+                <option value="in progress">In Progress ({tickets.filter(t => t.status.toLowerCase() === 'in progress').length})</option>
+                <option value="fulfilled">Fulfilled ({tickets.filter(t => t.status.toLowerCase() === 'fulfilled').length})</option>
+              </select>
+
+              <SkeuoButton
+                size="sm"
+                variant="primary"
+                onClick={() => setActiveSubTab('new_ticket')}
+                icon={<Plus className="w-3.5 h-3.5" />}
+              >
+                New Request
+              </SkeuoButton>
+            </div>
+          </div>
+
+          {/* Ticket Cards Grid */}
+          <div className="space-y-2.5">
+            {filteredTickets.length === 0 ? (
+              <div className="p-10 text-center instrument-panel rounded-xl text-slate-400">
+                No Jira tickets matched your search criteria.
+              </div>
+            ) : (
+              filteredTickets.map(ticket => {
+                const isFulfilled = ticket.status === 'Fulfilled';
+                return (
                   <div 
                     key={ticket.key} 
-                    className="skeuo-card p-4 rounded-xl border border-slate-700/60 hover:border-slate-600 transition-all"
+                    className="instrument-card rounded-xl p-4 flex flex-col md:flex-row md:items-center justify-between gap-3"
                   >
-                    <div className="flex flex-wrap items-start justify-between gap-3">
-                      <div className="space-y-1 flex-1">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <span className="text-xs font-mono font-bold text-sky-400 px-2 py-0.5 rounded bg-sky-950 border border-sky-600/40">
-                            {ticket.key}
-                          </span>
-                          <span className={`text-[10px] font-mono px-2 py-0.5 rounded font-bold uppercase ${
-                            ticket.status === 'Fulfilled'
-                              ? 'bg-emerald-950 text-emerald-300 border border-emerald-600/40'
-                              : ticket.status === 'In Progress'
-                              ? 'bg-amber-950 text-amber-300 border border-amber-600/40'
-                              : 'bg-blue-950 text-blue-300 border border-blue-600/40'
-                          }`}>
-                            {ticket.status}
-                          </span>
-                          <span className="text-[10px] font-mono text-slate-400 bg-slate-800 px-2 py-0.5 rounded">
-                            Priority: <strong className={ticket.priority === 'Highest' || ticket.priority === 'High' ? 'text-red-400' : 'text-slate-300'}>{ticket.priority}</strong>
-                          </span>
-                        </div>
+                    <div className="space-y-1.5 flex-1">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="font-mono text-xs font-bold px-2 py-0.5 rounded bg-[#10141b] text-blue-300 border border-blue-600/30">
+                          {ticket.key}
+                        </span>
+                        <StatusBadge status={ticket.priority} type="priority" />
+                        <StatusBadge status={ticket.status} type="status" />
+                        <span className="text-[11px] text-slate-400 font-sans">
+                          Submitted {new Date(ticket.createdAt).toLocaleDateString()}
+                        </span>
+                      </div>
 
-                        <h4 className="text-sm font-bold text-slate-100 font-mono pt-1">
-                          {ticket.summary}
-                        </h4>
-                        <p className="text-xs text-slate-400 font-mono">
+                      <h4 className="text-sm font-sans font-semibold text-slate-100">
+                        {ticket.summary}
+                      </h4>
+
+                      <div className="text-xs font-sans text-slate-300 flex flex-wrap items-center gap-2">
+                        <span>Requester: <strong className="text-slate-100">{ticket.requester.name}</strong> ({ticket.requester.department})</span>
+                        <span>•</span>
+                        <span>Target: <span className="text-blue-300 font-medium">{ticket.requestedEquipment}</span></span>
+                      </div>
+
+                      {ticket.description && (
+                        <p className="text-xs text-slate-400 font-sans line-clamp-1">
                           {ticket.description}
                         </p>
-                      </div>
-
-                      {/* Action Button */}
-                      <div className="flex flex-col items-end gap-2 shrink-0">
-                        {ticket.status !== 'Fulfilled' ? (
-                          <SkeuoButton
-                            size="sm"
-                            variant="emerald"
-                            onClick={() => {
-                              setFulfillingTicket(ticket);
-                              // Auto-select first in-stock asset
-                              if (availableStockAssets.length > 0) {
-                                setSelectedAssetId(availableStockAssets[0].id);
-                              }
-                            }}
-                            icon={<CheckCircle2 className="w-3.5 h-3.5" />}
-                          >
-                            Fulfill Request
-                          </SkeuoButton>
-                        ) : (
-                          <span className="text-xs text-emerald-400 font-mono flex items-center gap-1">
-                            <Check className="w-3.5 h-3.5" /> Fulfilled
-                          </span>
-                        )}
-                      </div>
+                      )}
                     </div>
 
-                    {/* Requester & Equipment Footer */}
-                    <div className="mt-3 pt-2.5 border-t border-white/5 flex flex-wrap items-center justify-between gap-3 text-xs font-mono text-slate-400">
-                      <div>
-                        Requester: <strong className="text-slate-200">{ticket.requester.name}</strong> ({ticket.requester.department})
-                      </div>
-                      <div>
-                        Requested: <strong className="text-sky-300">{ticket.requestedEquipment}</strong>
-                      </div>
-                      {ticket.linkedAssetTag && (
-                        <div className="text-emerald-400 flex items-center gap-1 font-bold">
-                          <LinkIcon className="w-3 h-3" /> Asset: {ticket.linkedAssetTag}
-                        </div>
+                    <div className="flex items-center gap-2 shrink-0 pt-2 md:pt-0 border-t md:border-t-0 border-white/[0.04]">
+                      {!isFulfilled ? (
+                        <SkeuoButton
+                          size="sm"
+                          variant="primary"
+                          onClick={() => {
+                            soundFx.playMechanicalClick();
+                            setFulfillingTicket(ticket);
+                          }}
+                          icon={<UserCheck className="w-3.5 h-3.5" />}
+                        >
+                          Fulfill with Stock
+                        </SkeuoButton>
+                      ) : (
+                        <span className="text-xs font-sans text-emerald-400 flex items-center gap-1.5 font-medium px-2.5 py-1 rounded instrument-well">
+                          <CheckCircle2 className="w-4 h-4" /> Fulfilled & Assigned
+                        </span>
                       )}
                     </div>
                   </div>
-                ))
-              )}
-            </div>
-
-            {/* Fulfill Ticket Modal Overlay */}
-            {fulfillingTicket && (
-              <div className="p-5 rounded-xl skeuo-metal-panel border-2 border-emerald-500/50 shadow-2xl mt-4 animate-fade-in">
-                <div className="flex items-center justify-between pb-3 border-b border-white/10 mb-4">
-                  <div className="flex items-center gap-2">
-                    <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-                    <h4 className="text-sm font-bold font-mono uppercase text-slate-100">
-                      Fulfill Hardware Request: {fulfillingTicket.key}
-                    </h4>
-                  </div>
-                  <button
-                    onClick={() => setFulfillingTicket(null)}
-                    className="text-slate-400 hover:text-white"
-                  >
-                    <X className="w-4 h-4" />
-                  </button>
-                </div>
-
-                <p className="text-xs text-slate-300 font-mono mb-4">
-                  Select an available asset from fleet stock to assign to <strong>{fulfillingTicket.requester.name}</strong> ({fulfillingTicket.requester.department}). This will immediately update custody and write an audit change log.
-                </p>
-
-                {availableStockAssets.length === 0 ? (
-                  <div className="p-4 rounded-lg skeuo-recessed text-amber-300 font-mono text-xs mb-4">
-                    ⚠️ No equipment currently marked &ldquo;In Stock&rdquo;. Please check-in or provision hardware before fulfilling.
-                  </div>
-                ) : (
-                  <div className="space-y-2 mb-4 max-h-48 overflow-y-auto">
-                    {availableStockAssets.map(asset => (
-                      <label 
-                        key={asset.id} 
-                        className={`p-3 rounded-lg flex items-center justify-between cursor-pointer border transition-all ${
-                          selectedAssetId === asset.id 
-                            ? 'bg-sky-950/60 border-sky-500/80 shadow-inner' 
-                            : 'skeuo-card border-slate-700/60 hover:border-slate-600'
-                        }`}
-                      >
-                        <div className="flex items-center gap-3">
-                          <input
-                            type="radio"
-                            name="fulfillAsset"
-                            checked={selectedAssetId === asset.id}
-                            onChange={() => setSelectedAssetId(asset.id)}
-                            className="text-sky-500"
-                          />
-                          <div>
-                            <div className="text-xs font-bold text-slate-100 font-mono">
-                              {asset.assetTag} • {asset.name}
-                            </div>
-                            <div className="text-[11px] text-slate-400 font-mono">
-                              S/N: {asset.serialNumber} • Loc: {asset.location}
-                            </div>
-                          </div>
-                        </div>
-                        <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-slate-800 text-slate-300 uppercase">
-                          {asset.category}
-                        </span>
-                      </label>
-                    ))}
-                  </div>
-                )}
-
-                <div className="flex items-center justify-end gap-2 pt-3 border-t border-white/10">
-                  <SkeuoButton
-                    size="sm"
-                    onClick={() => setFulfillingTicket(null)}
-                  >
-                    Cancel
-                  </SkeuoButton>
-                  <SkeuoButton
-                    size="sm"
-                    variant="emerald"
-                    disabled={!selectedAssetId}
-                    onClick={handleExecuteFulfillment}
-                    icon={<CheckCircle2 className="w-3.5 h-3.5" />}
-                  >
-                    Confirm & Complete Fulfillment
-                  </SkeuoButton>
-                </div>
-              </div>
+                );
+              })
             )}
           </div>
-        )}
+        </div>
+      )}
 
-        {/* Tab 2: Create Jira Ticket Form */}
-        {activeSubTab === 'new_ticket' && (
-          <form onSubmit={handleCreateTicket} className="mt-5 space-y-4">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <label className="text-[11px] font-mono uppercase text-slate-400 block mb-1">
-                  Ticket Summary / Subject *
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={summary}
-                  onChange={(e) => setSummary(e.target.value)}
-                  placeholder="e.g. Hardware Request: MacBook Pro 16 for AI Team"
-                  className="w-full h-9 px-3 skeuo-recessed rounded-lg text-xs font-mono text-slate-100 border border-slate-700 focus:outline-none focus:border-sky-500"
-                />
-              </div>
+      {/* SUBTAB 2: NEW TICKET FORM */}
+      {activeSubTab === 'new_ticket' && (
+        <div className="instrument-panel rounded-xl p-5">
+          <h3 className="text-sm font-sans font-bold text-slate-100 mb-1">
+            Submit Hardware Provisioning Request
+          </h3>
+          <p className="text-xs font-sans text-slate-400 mb-4">
+            Simulates creating a formal Atlassian Jira hardware service desk ticket and queues it for IT inventory fulfillment.
+          </p>
 
-              <div>
-                <label className="text-[11px] font-mono uppercase text-slate-400 block mb-1">
-                  Priority SLA
-                </label>
-                <select
-                  value={priority}
-                  onChange={(e) => setPriority(e.target.value as any)}
-                  className="w-full h-9 px-3 skeuo-recessed rounded-lg text-xs font-mono text-slate-100 border border-slate-700 focus:outline-none focus:border-sky-500"
-                >
-                  <option value="Highest">Highest (4 Hour SLA)</option>
-                  <option value="High">High (24 Hour SLA)</option>
-                  <option value="Medium">Medium (3 Business Days)</option>
-                  <option value="Low">Low (Standard)</option>
-                </select>
-              </div>
+          <form onSubmit={handleCreateTicket} className="space-y-4 max-w-2xl">
+            <div>
+              <label className="block text-xs font-sans font-semibold text-slate-300 mb-1">
+                Summary / Request Title *
+              </label>
+              <input
+                type="text"
+                required
+                value={summary}
+                onChange={(e) => setSummary(e.target.value)}
+                placeholder="e.g. Standard Developer Rig for new Senior Engineer"
+                className="w-full h-9 px-3 instrument-well rounded-lg text-xs font-sans text-slate-100 border border-white/[0.06] focus:border-blue-500 focus:outline-none"
+              />
+            </div>
 
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
-                <label className="text-[11px] font-mono uppercase text-slate-400 block mb-1">
-                  Requester Full Name *
+                <label className="block text-xs font-sans font-semibold text-slate-300 mb-1">
+                  Requester Name *
                 </label>
                 <input
                   type="text"
                   required
                   value={requesterName}
                   onChange={(e) => setRequesterName(e.target.value)}
-                  placeholder="e.g. Sina Vance"
-                  className="w-full h-9 px-3 skeuo-recessed rounded-lg text-xs font-mono text-slate-100 border border-slate-700 focus:outline-none focus:border-sky-500"
+                  placeholder="e.g. Elena Rostova"
+                  className="w-full h-9 px-3 instrument-well rounded-lg text-xs font-sans text-slate-100 border border-white/[0.06] focus:border-blue-500 focus:outline-none"
                 />
               </div>
 
               <div>
-                <label className="text-[11px] font-mono uppercase text-slate-400 block mb-1">
+                <label className="block text-xs font-sans font-semibold text-slate-300 mb-1">
                   Department
                 </label>
-                <input
-                  type="text"
+                <select
                   value={department}
                   onChange={(e) => setDepartment(e.target.value)}
-                  placeholder="e.g. Product Management"
-                  className="w-full h-9 px-3 skeuo-recessed rounded-lg text-xs font-mono text-slate-100 border border-slate-700 focus:outline-none focus:border-sky-500"
-                />
+                  className="w-full h-9 px-3 instrument-btn rounded-lg text-xs font-sans text-slate-200 border border-white/[0.08] focus:border-blue-500 focus:outline-none cursor-pointer"
+                >
+                  <option value="Engineering">Engineering</option>
+                  <option value="Product Management">Product Management</option>
+                  <option value="Design">Design</option>
+                  <option value="Data Science">Data Science</option>
+                  <option value="Operations">Operations</option>
+                  <option value="Sales">Sales</option>
+                </select>
               </div>
+            </div>
 
-              <div className="sm:col-span-2">
-                <label className="text-[11px] font-mono uppercase text-slate-400 block mb-1">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs font-sans font-semibold text-slate-300 mb-1">
                   Requested Equipment Specification
                 </label>
                 <input
                   type="text"
                   value={requestedEquipment}
                   onChange={(e) => setRequestedEquipment(e.target.value)}
-                  placeholder="e.g. MacBook Pro 16 (M3 Max / 64GB Unified Memory / 2TB SSD)"
-                  className="w-full h-9 px-3 skeuo-recessed rounded-lg text-xs font-mono text-slate-100 border border-slate-700 focus:outline-none focus:border-sky-500"
+                  placeholder="e.g. MacBook Pro 16 M3 Max or Dell UltraSharp 32"
+                  className="w-full h-9 px-3 instrument-well rounded-lg text-xs font-sans text-slate-100 border border-white/[0.06] focus:border-blue-500 focus:outline-none"
                 />
               </div>
 
-              <div className="sm:col-span-2">
-                <label className="text-[11px] font-mono uppercase text-slate-400 block mb-1">
-                  Business Justification & Notes
+              <div>
+                <label className="block text-xs font-sans font-semibold text-slate-300 mb-1">
+                  Priority
                 </label>
-                <textarea
-                  rows={3}
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                  placeholder="Detail why this hardware is required, manager approval status, and target start date."
-                  className="w-full p-3 skeuo-recessed rounded-lg text-xs font-mono text-slate-100 border border-slate-700 focus:outline-none focus:border-sky-500"
-                />
+                <select
+                  value={priority}
+                  onChange={(e) => setPriority(e.target.value as any)}
+                  className="w-full h-9 px-3 instrument-btn rounded-lg text-xs font-sans text-slate-200 border border-white/[0.08] focus:border-blue-500 focus:outline-none cursor-pointer"
+                >
+                  <option value="Highest">Highest (Expedited Onboarding)</option>
+                  <option value="High">High</option>
+                  <option value="Medium">Medium (Standard Replacement)</option>
+                  <option value="Low">Low</option>
+                </select>
               </div>
             </div>
 
-            <div className="flex justify-end gap-2 pt-3 border-t border-white/10">
+            <div>
+              <label className="block text-xs font-sans font-semibold text-slate-300 mb-1">
+                Business Justification / Notes
+              </label>
+              <textarea
+                rows={3}
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                placeholder="Details regarding hardware requirements, peripherals needed, shipping instructions..."
+                className="w-full p-2.5 instrument-well rounded-lg text-xs font-sans text-slate-100 border border-white/[0.06] focus:border-blue-500 focus:outline-none"
+              />
+            </div>
+
+            <div className="flex items-center gap-2 pt-2">
+              <SkeuoButton
+                type="submit"
+                variant="primary"
+                icon={<Plus className="w-3.5 h-3.5" />}
+              >
+                Submit Ticket to Queue
+              </SkeuoButton>
+
               <SkeuoButton
                 type="button"
-                size="sm"
+                variant="subtle"
                 onClick={() => setActiveSubTab('queue')}
               >
                 Cancel
               </SkeuoButton>
-              <SkeuoButton
-                type="submit"
-                variant="accent"
-                size="sm"
-                icon={<Plus className="w-3.5 h-3.5" />}
-              >
-                Dispatch to Jira Board
-              </SkeuoButton>
             </div>
           </form>
-        )}
+        </div>
+      )}
 
-        {/* Tab 3: Jira Settings */}
-        {activeSubTab === 'settings' && (
-          <div className="mt-5 space-y-4">
-            <div className="skeuo-card p-5 rounded-xl border border-slate-700/60">
-              <h4 className="text-xs font-bold font-mono uppercase tracking-wider text-slate-200 mb-3">
-                Atlassian Cloud Credentials
-              </h4>
+      {/* SUBTAB 3: SANDBOX SETTINGS */}
+      {activeSubTab === 'settings' && (
+        <div className="instrument-panel rounded-xl p-5 max-w-2xl">
+          <h3 className="text-sm font-sans font-bold text-slate-100 mb-1">
+            Jira Service Management Sandbox Configuration
+          </h3>
+          <p className="text-xs font-sans text-slate-400 mb-4">
+            Configure simulated Atlassian Jira Cloud instance parameters for hardware procurement workflows.
+          </p>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs font-mono">
-                <div>
-                  <label className="text-slate-400 block mb-1">JIRA DOMAIN</label>
-                  <input
-                    type="text"
-                    value={jiraDomain}
-                    onChange={(e) => setJiraDomain(e.target.value)}
-                    className="w-full h-9 px-3 skeuo-recessed rounded-lg text-slate-200 border border-slate-700"
-                  />
-                </div>
+          <div className="space-y-3.5">
+            <div>
+              <label className="block text-xs font-sans font-semibold text-slate-300 mb-1">
+                Atlassian Domain
+              </label>
+              <input
+                type="text"
+                value={jiraDomain}
+                onChange={(e) => setJiraDomain(e.target.value)}
+                className="w-full h-9 px-3 instrument-well rounded-lg text-xs font-mono text-slate-100 border border-white/[0.06] focus:border-blue-500 focus:outline-none"
+              />
+            </div>
 
-                <div>
-                  <label className="text-slate-400 block mb-1">PROJECT KEY</label>
-                  <input
-                    type="text"
-                    value={jiraProjectKey}
-                    onChange={(e) => setJiraProjectKey(e.target.value)}
-                    className="w-full h-9 px-3 skeuo-recessed rounded-lg text-slate-200 border border-slate-700"
-                  />
-                </div>
-              </div>
+            <div>
+              <label className="block text-xs font-sans font-semibold text-slate-300 mb-1">
+                Project Key Prefix
+              </label>
+              <input
+                type="text"
+                value={jiraProjectKey}
+                onChange={(e) => setJiraProjectKey(e.target.value)}
+                className="w-full h-9 px-3 instrument-well rounded-lg text-xs font-mono text-slate-100 border border-white/[0.06] focus:border-blue-500 focus:outline-none"
+              />
+            </div>
 
-              <div className="mt-4 pt-3 border-t border-white/5 flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <LedIndicator color="green" size="sm" />
-                  <span className="text-xs font-mono text-emerald-400">
-                    Webhook listener active on port 3000
-                  </span>
-                </div>
-
-                <SkeuoButton
-                  size="sm"
-                  variant="accent"
-                  onClick={() => {
-                    JiraService.updateConfig({ domain: jiraDomain, projectKey: jiraProjectKey });
-                    setSavedSettingsSuccess(true);
-                    setTimeout(() => setSavedSettingsSuccess(false), 2500);
-                  }}
-                >
-                  {savedSettingsSuccess ? 'Saved & Verified!' : 'Save Credentials'}
-                </SkeuoButton>
-              </div>
+            <div className="pt-2">
+              <SkeuoButton
+                variant="standard"
+                onClick={() => {
+                  soundFx.playMechanicalClick();
+                  setSavedSettingsSuccess(true);
+                  setTimeout(() => setSavedSettingsSuccess(false), 2500);
+                }}
+              >
+                {savedSettingsSuccess ? '✓ Configuration Saved' : 'Save Parameters'}
+              </SkeuoButton>
             </div>
           </div>
-        )}
+        </div>
+      )}
 
-      </div>
+      {/* FULFILLMENT MODAL PANEL */}
+      {fulfillingTicket && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in">
+          <div className="instrument-panel rounded-2xl w-full max-w-lg p-5 border border-white/[0.1] shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between pb-3 border-b border-white/[0.08]">
+              <div>
+                <h3 className="text-sm font-sans font-bold text-slate-100">
+                  Fulfill Jira Request: {fulfillingTicket.key}
+                </h3>
+                <p className="text-xs font-sans text-slate-400">
+                  Select available hardware from depot reserves to assign to {fulfillingTicket.requester.name}.
+                </p>
+              </div>
+              <button
+                onClick={() => setFulfillingTicket(null)}
+                className="w-8 h-8 rounded-lg instrument-btn flex items-center justify-center text-slate-400 hover:text-white cursor-pointer"
+                aria-label="Close fulfillment modal"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="instrument-well p-3 rounded-xl border border-white/[0.04] space-y-1 text-xs font-sans">
+              <div className="text-slate-400">
+                Summary: <strong className="text-slate-200">{fulfillingTicket.summary}</strong>
+              </div>
+              <div className="text-slate-400">
+                Requested: <span className="text-blue-300 font-semibold">{fulfillingTicket.requestedEquipment}</span>
+              </div>
+              <div className="text-slate-400">
+                Department: <span className="text-slate-300">{fulfillingTicket.requester.department}</span>
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-xs font-sans font-semibold text-slate-200 mb-1.5">
+                Available In-Stock Assets ({availableStockAssets.length} Ready in Depot)
+              </label>
+
+              {availableStockAssets.length === 0 ? (
+                <div className="p-4 rounded-lg bg-amber-950/30 border border-amber-500/30 text-amber-200 text-xs font-sans">
+                  No equipment is currently marked &ldquo;In Stock&rdquo;. Please intake new equipment or inspect returned devices first.
+                </div>
+              ) : (
+                <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
+                  {availableStockAssets.map(asset => (
+                    <label
+                      key={asset.id}
+                      className={`p-3 rounded-lg flex items-center justify-between gap-3 border cursor-pointer transition-colors ${
+                        selectedAssetId === asset.id
+                          ? 'bg-[#1b2535] border-blue-500 text-white'
+                          : 'instrument-well border-white/[0.05] hover:border-white/[0.1] text-slate-300'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2.5">
+                        <input
+                          type="radio"
+                          name="selectedAsset"
+                          checked={selectedAssetId === asset.id}
+                          onChange={() => setSelectedAssetId(asset.id)}
+                          className="accent-blue-500"
+                        />
+                        <div>
+                          <div className="text-xs font-sans font-semibold flex items-center gap-2">
+                            <span>{asset.name}</span>
+                            <span className="font-mono text-[10px] px-1.5 py-0.2 rounded bg-slate-800 text-blue-300">
+                              {asset.assetTag}
+                            </span>
+                          </div>
+                          <div className="text-[10px] text-slate-400 font-sans">
+                            S/N: <span className="font-mono">{asset.serialNumber}</span> • {asset.location}
+                          </div>
+                        </div>
+                      </div>
+
+                      <span className="text-xs font-mono text-emerald-400 font-medium">
+                        Ready
+                      </span>
+                    </label>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div className="pt-3 border-t border-white/[0.08] flex items-center justify-end gap-2">
+              <SkeuoButton
+                type="button"
+                variant="subtle"
+                onClick={() => setFulfillingTicket(null)}
+              >
+                Cancel
+              </SkeuoButton>
+
+              <SkeuoButton
+                type="button"
+                variant="primary"
+                disabled={!selectedAssetId}
+                onClick={handleExecuteFulfillment}
+                icon={<Check className="w-3.5 h-3.5" />}
+              >
+                Complete Assignment
+              </SkeuoButton>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

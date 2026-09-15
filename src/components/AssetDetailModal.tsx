@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   X, 
   UserCheck, 
@@ -14,17 +14,15 @@ import {
   ExternalLink,
   Laptop,
   ArrowRight,
-  Sparkles,
   MapPin,
   Tag,
   Hash,
-  Activity,
-  Layers
+  AlertCircle
 } from 'lucide-react';
 import { Asset, ChangeLogEntry, JiraTicket } from '../types';
 import { AppleApiService } from '../services/appleService';
 import { soundFx } from '../services/audioService';
-import { SkeuoButton, LedIndicator, ScrewHead } from './SkeuoComponents';
+import { SkeuoButton, LedIndicator, StatusBadge } from './SkeuoComponents';
 import { BarcodeLabelPlate } from './BarcodeLabelPlate';
 
 interface AssetDetailModalProps {
@@ -53,6 +51,23 @@ export const AssetDetailModal: React.FC<AssetDetailModalProps> = ({
   const [selectedJiraKey, setSelectedJiraKey] = useState<string>('SYS-1084');
   const [isSyncingApple, setIsSyncingApple] = useState<boolean>(false);
   const [appleSyncSuccess, setAppleSyncSuccess] = useState<boolean>(false);
+
+  // Keyboard navigation: close on Escape
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        if (isReassigning) {
+          setIsReassigning(false);
+        } else {
+          onClose();
+        }
+      }
+    };
+    if (isOpen) {
+      window.addEventListener('keydown', handleKeyDown);
+    }
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, isReassigning, onClose]);
 
   if (!isOpen || !asset) return null;
 
@@ -172,665 +187,575 @@ export const AssetDetailModal: React.FC<AssetDetailModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-black/85 backdrop-blur-md overflow-y-auto">
-      <div className="w-full max-w-4xl my-auto skeuo-metal-panel rounded-2xl p-5 sm:p-7 relative border-2 border-[#374151] shadow-[0_30px_70px_rgba(0,0,0,0.95)]">
+    <div 
+      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-black/80 backdrop-blur-sm animate-fade-in"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="asset-modal-title"
+    >
+      <div className="w-full max-w-4xl max-h-[92vh] flex flex-col instrument-panel rounded-2xl border border-white/[0.09] shadow-2xl overflow-hidden">
         
-        {/* Hardware chassis rivets */}
-        <div className="absolute top-3 left-3"><ScrewHead rotation={18} /></div>
-        <div className="absolute top-3 right-3"><ScrewHead rotation={105} /></div>
-        <div className="absolute bottom-3 left-3"><ScrewHead rotation={60} /></div>
-        <div className="absolute bottom-3 right-3"><ScrewHead rotation={145} /></div>
-
-        {/* Modal Top Bar */}
-        <div className="flex flex-wrap items-start justify-between gap-4 pb-4 border-b border-white/10">
-          <div className="flex items-center gap-3.5">
-            <div className="w-12 h-12 rounded-xl skeuo-recessed flex items-center justify-center border border-slate-700">
-              <Laptop className="w-6 h-6 text-sky-400" />
+        {/* Modal Header */}
+        <div className="p-4 sm:p-5 border-b border-white/[0.07] bg-[#12151b] flex flex-wrap items-start justify-between gap-3 shrink-0">
+          <div className="flex items-center gap-3">
+            <div className="w-11 h-11 rounded-xl instrument-well flex items-center justify-center text-blue-400 border border-white/[0.05]">
+              <Laptop className="w-5 h-5" />
             </div>
             <div>
-              <div className="flex items-center gap-2.5">
-                <span className="text-xs font-mono font-bold px-2 py-0.5 rounded bg-sky-950 text-sky-300 border border-sky-600/40">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-xs font-mono font-bold px-2 py-0.5 rounded bg-[#10141b] text-blue-300 border border-blue-600/30">
                   {asset.assetTag}
                 </span>
-                <h2 className="text-lg sm:text-xl font-bold text-slate-100 font-mono tracking-tight text-engraved">
+                <h2 id="asset-modal-title" className="text-base sm:text-lg font-sans font-bold text-slate-100">
                   {asset.name}
                 </h2>
-                <LedIndicator 
-                  color={asset.status === 'In Stock' ? 'green' : asset.status === 'In Use' ? 'blue' : 'amber'} 
-                  size="md"
-                />
+                <StatusBadge status={asset.status} />
               </div>
-              <div className="flex flex-wrap items-center gap-3 text-xs text-slate-400 font-mono mt-1">
-                <span>Model: <strong className="text-slate-200">{asset.manufacturer} {asset.model}</strong></span>
-                <span>•</span>
-                <span>S/N: <strong className="text-sky-300">{asset.serialNumber}</strong></span>
-                <span>•</span>
-                <span className="text-slate-400">Barcode: <strong className="text-slate-300">{asset.barcode}</strong></span>
+              <div className="text-xs font-sans text-slate-400 mt-0.5">
+                {asset.manufacturer} • {asset.model} • S/N: <span className="font-mono text-slate-300">{asset.serialNumber}</span>
               </div>
             </div>
           </div>
 
-          <div className="flex items-center gap-2 ml-auto">
-            <button
-              onClick={onClose}
-              className="w-9 h-9 rounded-lg skeuo-btn flex items-center justify-center text-slate-400 hover:text-white cursor-pointer"
-            >
-              <X className="w-4 h-4" />
-            </button>
-          </div>
+          <button
+            onClick={onClose}
+            className="w-8 h-8 rounded-lg instrument-btn flex items-center justify-center text-slate-400 hover:text-white cursor-pointer"
+            aria-label="Close asset details modal"
+          >
+            <X className="w-4 h-4" />
+          </button>
         </div>
 
-        {/* Navigation Tabs */}
-        <div className="flex items-center gap-2 border-b border-white/10 mt-4 pb-3 overflow-x-auto">
-          <SkeuoButton
-            size="sm"
-            activeState={activeTab === 'overview'}
-            onClick={() => setActiveTab('overview')}
-            icon={<Layers className="w-3.5 h-3.5" />}
+        {/* Modal Tabs Bar */}
+        <div className="px-4 sm:px-5 pt-2 pb-2 border-b border-white/[0.06] bg-[#101318] flex items-center gap-1.5 overflow-x-auto shrink-0">
+          <button
+            onClick={() => { soundFx.playMechanicalClick(); setActiveTab('overview'); }}
+            className={`px-3 py-1.5 rounded-lg text-xs font-sans font-medium flex items-center gap-1.5 transition-all cursor-pointer whitespace-nowrap ${
+              activeTab === 'overview'
+                ? 'bg-[#1e2736] text-white border border-blue-500/40 shadow-xs'
+                : 'text-slate-400 hover:text-slate-200 hover:bg-white/[0.04]'
+            }`}
           >
-            Overview & Assignment
-          </SkeuoButton>
+            <Cpu className="w-3.5 h-3.5" />
+            <span>Specifications & Custody</span>
+          </button>
 
           {isApple && (
-            <SkeuoButton
-              size="sm"
-              activeState={activeTab === 'apple'}
-              onClick={() => setActiveTab('apple')}
-              icon={<ShieldCheck className="w-3.5 h-3.5 text-sky-400" />}
+            <button
+              onClick={() => { soundFx.playMechanicalClick(); setActiveTab('apple'); }}
+              className={`px-3 py-1.5 rounded-lg text-xs font-sans font-medium flex items-center gap-1.5 transition-all cursor-pointer whitespace-nowrap ${
+                activeTab === 'apple'
+                  ? 'bg-[#1e2736] text-blue-300 border border-blue-500/40 shadow-xs'
+                  : 'text-slate-400 hover:text-slate-200 hover:bg-white/[0.04]'
+              }`}
             >
-              Apple API & Specs
-            </SkeuoButton>
+              <ShieldCheck className="w-3.5 h-3.5 text-blue-400" />
+              <span>Apple GSX Verification</span>
+            </button>
           )}
 
-          <SkeuoButton
-            size="sm"
-            activeState={activeTab === 'changelog'}
-            onClick={() => setActiveTab('changelog')}
-            icon={<History className="w-3.5 h-3.5" />}
+          <button
+            onClick={() => { soundFx.playMechanicalClick(); setActiveTab('changelog'); }}
+            className={`px-3 py-1.5 rounded-lg text-xs font-sans font-medium flex items-center gap-1.5 transition-all cursor-pointer whitespace-nowrap ${
+              activeTab === 'changelog'
+                ? 'bg-[#1e2736] text-white border border-blue-500/40 shadow-xs'
+                : 'text-slate-400 hover:text-slate-200 hover:bg-white/[0.04]'
+            }`}
           >
-            Change Logs & Audit ({asset.changeLogs.length})
-          </SkeuoButton>
+            <History className="w-3.5 h-3.5" />
+            <span>Change Log ({asset.changeLogs.length})</span>
+          </button>
 
-          <SkeuoButton
-            size="sm"
-            activeState={activeTab === 'label'}
-            onClick={() => setActiveTab('label')}
-            icon={<Barcode className="w-3.5 h-3.5" />}
+          <button
+            onClick={() => { soundFx.playMechanicalClick(); setActiveTab('label'); }}
+            className={`px-3 py-1.5 rounded-lg text-xs font-sans font-medium flex items-center gap-1.5 transition-all cursor-pointer whitespace-nowrap ${
+              activeTab === 'label'
+                ? 'bg-[#1e2736] text-white border border-blue-500/40 shadow-xs'
+                : 'text-slate-400 hover:text-slate-200 hover:bg-white/[0.04]'
+            }`}
           >
-            Barcode Tag
-          </SkeuoButton>
+            <Barcode className="w-3.5 h-3.5" />
+            <span>Asset Tag Plate</span>
+          </button>
         </div>
 
-        {/* Tab 1: Overview & Assignment */}
-        {activeTab === 'overview' && (
-          <div className="mt-5 space-y-5">
-            {/* Current Custodian & Location Panel */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {/* Modal Body Content (Scrollable) */}
+        <div className="p-4 sm:p-6 overflow-y-auto space-y-4">
+          
+          {/* TAB 1: OVERVIEW */}
+          {activeTab === 'overview' && (
+            <div className="space-y-4">
               
-              {/* Custody Card */}
-              <div className="skeuo-card p-4 rounded-xl border border-slate-700/60">
-                <div className="flex items-center justify-between mb-3">
+              {/* Technical Specifications Bay */}
+              <div className="instrument-card rounded-xl p-4">
+                <div className="flex items-center justify-between mb-3 pb-2 border-b border-white/[0.05]">
                   <div className="flex items-center gap-2">
-                    <UserCheck className="w-4 h-4 text-sky-400" />
-                    <span className="text-xs font-mono uppercase tracking-wider font-bold text-slate-300">
-                      Current Equipment Custodian
-                    </span>
+                    <Cpu className="w-4 h-4 text-blue-400" />
+                    <h3 className="text-xs font-sans font-bold uppercase tracking-wider text-slate-200">
+                      Hardware Technical Specifications
+                    </h3>
                   </div>
-                  <span className={`text-[11px] font-mono px-2 py-0.5 rounded-full ${
-                    asset.status === 'In Use' 
-                      ? 'bg-blue-950/80 text-blue-300 border border-blue-600/40' 
-                      : 'bg-emerald-950/80 text-emerald-300 border border-emerald-600/40'
-                  }`}>
-                    {asset.status}
-                  </span>
+                  {isApple && (
+                    <span className="text-[11px] text-blue-300 font-sans flex items-center gap-1">
+                      <ShieldCheck className="w-3 h-3" /> GSX Verified
+                    </span>
+                  )}
                 </div>
 
-                {asset.assignedTo ? (
-                  <div className="skeuo-recessed p-3.5 rounded-lg border border-slate-800">
-                    <div className="text-base font-bold text-slate-100">
-                      {asset.assignedTo.name}
-                    </div>
-                    <div className="text-xs text-sky-400 font-mono mt-0.5">
-                      {asset.assignedTo.email}
-                    </div>
-                    <div className="grid grid-cols-2 gap-2 mt-3 pt-2.5 border-t border-white/5 text-xs text-slate-400 font-mono">
-                      <div>
-                        <span className="text-slate-500 block text-[10px]">DEPARTMENT</span>
-                        <span className="text-slate-200">{asset.assignedTo.department}</span>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div className="instrument-well p-3 rounded-lg">
+                    <span className="text-[10px] uppercase font-sans tracking-wide text-slate-500 block mb-0.5">Processor / SoC</span>
+                    <span className="text-xs font-sans font-semibold text-slate-100 block truncate" title={asset.specs.processor}>
+                      {asset.specs.processor}
+                    </span>
+                  </div>
+                  <div className="instrument-well p-3 rounded-lg">
+                    <span className="text-[10px] uppercase font-sans tracking-wide text-slate-500 block mb-0.5">System Memory</span>
+                    <span className="text-xs font-mono font-semibold text-slate-100 block">
+                      {asset.specs.ram}
+                    </span>
+                  </div>
+                  <div className="instrument-well p-3 rounded-lg">
+                    <span className="text-[10px] uppercase font-sans tracking-wide text-slate-500 block mb-0.5">Primary Storage</span>
+                    <span className="text-xs font-mono font-semibold text-slate-100 block">
+                      {asset.specs.storage}
+                    </span>
+                  </div>
+                  <div className="instrument-well p-3 rounded-lg">
+                    <span className="text-[10px] uppercase font-sans tracking-wide text-slate-500 block mb-0.5">Graphics / GPU</span>
+                    <span className="text-xs font-sans font-semibold text-slate-200 block truncate">
+                      {asset.specs.graphics}
+                    </span>
+                  </div>
+                  <div className="instrument-well p-3 rounded-lg">
+                    <span className="text-[10px] uppercase font-sans tracking-wide text-slate-500 block mb-0.5">Display Panel</span>
+                    <span className="text-xs font-sans font-semibold text-slate-200 block truncate">
+                      {asset.specs.display}
+                    </span>
+                  </div>
+                  <div className="instrument-well p-3 rounded-lg">
+                    <span className="text-[10px] uppercase font-sans tracking-wide text-slate-500 block mb-0.5">Operating System</span>
+                    <span className="text-xs font-sans font-semibold text-slate-200 block truncate">
+                      {asset.specs.os}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Custody and Placement Bay */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                
+                {/* Current Custody Card */}
+                <div className="instrument-card rounded-xl p-4 flex flex-col justify-between">
+                  <div>
+                    <div className="flex items-center justify-between mb-3 pb-2 border-b border-white/[0.05]">
+                      <div className="flex items-center gap-2">
+                        <UserCheck className="w-4 h-4 text-emerald-400" />
+                        <h3 className="text-xs font-sans font-bold uppercase tracking-wider text-slate-200">
+                          Current Assigned Custodian
+                        </h3>
                       </div>
-                      <div>
-                        <span className="text-slate-500 block text-[10px]">ASSIGNED DATE</span>
-                        <span className="text-slate-200">{asset.assignedTo.assignedDate}</span>
+                      <StatusBadge status={asset.status} />
+                    </div>
+
+                    {asset.assignedTo ? (
+                      <div className="instrument-well p-3.5 rounded-lg space-y-2">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs text-slate-400 font-sans">Custodian:</span>
+                          <span className="text-xs font-sans font-bold text-slate-100">{asset.assignedTo.name}</span>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs text-slate-400 font-sans">Department:</span>
+                          <span className="text-xs font-sans text-slate-200">{asset.assignedTo.department}</span>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs text-slate-400 font-sans">Email:</span>
+                          <span className="text-xs font-mono text-blue-300 truncate max-w-[200px]">{asset.assignedTo.email}</span>
+                        </div>
+                        <div className="flex items-center justify-between pt-1.5 border-t border-white/[0.04]">
+                          <span className="text-xs text-slate-400 font-sans">Assigned Date:</span>
+                          <span className="text-xs font-mono text-slate-300">{asset.assignedTo.assignedDate}</span>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="instrument-well p-5 rounded-lg text-center">
+                        <span className="text-xs text-emerald-400 font-sans font-semibold block mb-1">
+                          Available in Depot Reserves
+                        </span>
+                        <p className="text-xs text-slate-400 font-sans">
+                          Ready for immediate allocation to team member or replacement ticket.
+                        </p>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="flex flex-wrap items-center gap-2 mt-4 pt-3 border-t border-white/[0.05]">
+                    <SkeuoButton
+                      size="sm"
+                      variant="primary"
+                      onClick={() => setIsReassigning(!isReassigning)}
+                      icon={<UserCheck className="w-3.5 h-3.5" />}
+                    >
+                      {asset.assignedTo ? 'Reassign Custody...' : 'Assign to Employee...'}
+                    </SkeuoButton>
+
+                    {asset.assignedTo && (
+                      <SkeuoButton
+                        size="sm"
+                        variant="standard"
+                        onClick={handleReturnToStock}
+                      >
+                        Check-in / Return to Stock
+                      </SkeuoButton>
+                    )}
+                  </div>
+                </div>
+
+                {/* Location and Acquisition Details */}
+                <div className="instrument-card rounded-xl p-4">
+                  <div className="flex items-center gap-2 mb-3 pb-2 border-b border-white/[0.05]">
+                    <MapPin className="w-4 h-4 text-amber-400" />
+                    <h3 className="text-xs font-sans font-bold uppercase tracking-wider text-slate-200">
+                      Depot Location & Procurement
+                    </h3>
+                  </div>
+
+                  <div className="instrument-well p-3.5 rounded-lg space-y-2 text-xs font-sans">
+                    <div className="flex justify-between items-center">
+                      <span className="text-slate-400">Physical Location:</span>
+                      <span className="text-slate-200 font-semibold">{asset.location}</span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-slate-400">Purchase Date:</span>
+                      <span className="text-slate-200 font-mono">{asset.purchaseDate}</span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-slate-400">Purchase Cost:</span>
+                      <span className="text-emerald-400 font-mono font-bold">${asset.purchasePrice.toFixed(2)}</span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-slate-400">Supplier:</span>
+                      <span className="text-slate-200">{asset.supplier}</span>
+                    </div>
+                    <div className="flex justify-between items-center pt-1.5 border-t border-white/[0.04]">
+                      <span className="text-slate-400">Warranty Expiration:</span>
+                      <span className="text-amber-300 font-mono font-semibold">{asset.warrantyExpiry}</span>
+                    </div>
+                  </div>
+
+                  {asset.linkedJiraKey && (
+                    <div className="mt-3 p-2.5 rounded-lg bg-blue-950/40 border border-blue-700/30 flex items-center justify-between text-xs font-sans">
+                      <div className="flex items-center gap-2 text-blue-300">
+                        <Tag className="w-3.5 h-3.5 text-blue-400" />
+                        <span>Linked Jira: <strong className="font-mono">{asset.linkedJiraKey}</strong></span>
+                      </div>
+                      <span className="text-[10px] text-blue-400 uppercase font-semibold">Service Desk</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* REASSIGNMENT FORM DRAWER (Shows who did, when did, to which property) */}
+              {isReassigning && (
+                <form onSubmit={handleExecuteReassignment} className="p-4 sm:p-5 rounded-xl instrument-panel border border-blue-500/50 shadow-xl animate-fade-in space-y-3.5">
+                  <div className="flex items-center justify-between pb-2.5 border-b border-white/[0.08]">
+                    <div className="flex items-center gap-2">
+                      <UserCheck className="w-4 h-4 text-blue-400" />
+                      <h4 className="text-sm font-sans font-bold text-slate-100">
+                        Reassign Equipment Custodian
+                      </h4>
+                    </div>
+                    <span className="text-xs font-sans text-slate-400">
+                      Operator: <strong className="text-blue-300">{currentUser}</strong>
+                    </span>
+                  </div>
+
+                  {/* Visual preview of diff */}
+                  <div className="p-3 rounded-lg instrument-well flex items-center justify-between gap-3 text-xs font-sans">
+                    <div>
+                      <span className="text-slate-500 block text-[10px] uppercase font-medium">Previous Custodian:</span>
+                      <span className="text-rose-300 font-semibold">{asset.assignedTo ? asset.assignedTo.name : 'IT Depot Pool'}</span>
+                    </div>
+                    <ArrowRight className="w-4 h-4 text-slate-500 shrink-0" />
+                    <div>
+                      <span className="text-slate-500 block text-[10px] uppercase font-medium">New Custodian:</span>
+                      <span className="text-emerald-400 font-semibold">{newAssigneeName || 'Enter name below'}</span>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-xs font-sans font-semibold text-slate-300 mb-1">
+                        New Assignee Full Name *
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        value={newAssigneeName}
+                        onChange={(e) => setNewAssigneeName(e.target.value)}
+                        placeholder="e.g. Sina Vance"
+                        className="w-full h-9 px-3 instrument-well rounded-lg text-xs font-sans text-slate-100 border border-white/[0.06] focus:border-blue-500 focus:outline-none"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-sans font-semibold text-slate-300 mb-1">
+                        Department
+                      </label>
+                      <select
+                        value={newDepartment}
+                        onChange={(e) => setNewDepartment(e.target.value)}
+                        className="w-full h-9 px-3 instrument-btn rounded-lg text-xs font-sans text-slate-200 border border-white/[0.08] focus:border-blue-500 focus:outline-none cursor-pointer"
+                      >
+                        <option value="Product Management">Product Management</option>
+                        <option value="Engineering">Engineering</option>
+                        <option value="Design">Design</option>
+                        <option value="Data Science">Data Science</option>
+                        <option value="Operations">Operations</option>
+                        <option value="Executive">Executive</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-xs font-sans font-semibold text-slate-300 mb-1">
+                        Corporate Email
+                      </label>
+                      <input
+                        type="email"
+                        value={newAssigneeEmail}
+                        onChange={(e) => setNewAssigneeEmail(e.target.value)}
+                        placeholder="sina.vance@company.internal"
+                        className="w-full h-9 px-3 instrument-well rounded-lg text-xs font-sans text-slate-100 border border-white/[0.06] focus:border-blue-500 focus:outline-none"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-sans font-semibold text-slate-300 mb-1">
+                        Link Jira Ticket (Optional)
+                      </label>
+                      <select
+                        value={selectedJiraKey}
+                        onChange={(e) => setSelectedJiraKey(e.target.value)}
+                        className="w-full h-9 px-3 instrument-btn rounded-lg text-xs font-sans text-slate-200 border border-white/[0.08] focus:border-blue-500 focus:outline-none cursor-pointer"
+                      >
+                        <option value="">No linked Jira ticket</option>
+                        {jiraTickets.map(t => (
+                          <option key={t.key} value={t.key}>
+                            {t.key}: {t.summary.slice(0, 32)}...
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-sans font-semibold text-slate-300 mb-1">
+                      Audit Reason & Justification *
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={reassignReason}
+                      onChange={(e) => setReassignReason(e.target.value)}
+                      placeholder="e.g. Hardware upgrade per Jira SYS-1084, confirmed with IT manager"
+                      className="w-full h-9 px-3 instrument-well rounded-lg text-xs font-sans text-slate-100 border border-white/[0.06] focus:border-blue-500 focus:outline-none"
+                    />
+                  </div>
+
+                  <div className="flex items-center justify-end gap-2 pt-2 border-t border-white/[0.06]">
+                    <SkeuoButton
+                      type="button"
+                      variant="subtle"
+                      onClick={() => setIsReassigning(false)}
+                    >
+                      Cancel
+                    </SkeuoButton>
+
+                    <SkeuoButton
+                      type="submit"
+                      variant="primary"
+                      icon={<CheckCircle2 className="w-3.5 h-3.5" />}
+                    >
+                      Confirm Reassignment
+                    </SkeuoButton>
+                  </div>
+                </form>
+              )}
+            </div>
+          )}
+
+          {/* TAB 2: APPLE GSX VERIFICATION (DEMO) */}
+          {activeTab === 'apple' && isApple && (
+            <div className="space-y-4">
+              <div className="instrument-card rounded-xl p-5">
+                <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-white/[0.06] mb-4">
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <ShieldCheck className="w-5 h-5 text-blue-400" />
+                      <h3 className="text-sm font-sans font-bold text-slate-100">
+                        Apple Global Service Exchange (GSX) API Integration
+                      </h3>
+                      <span className="text-[10px] font-sans font-semibold px-2 py-0.5 rounded bg-blue-950 text-blue-300 border border-blue-700/40">
+                        Demo API Sandbox
+                      </span>
+                    </div>
+                    <p className="text-xs font-sans text-slate-400 mt-0.5">
+                      Direct verification against Apple serial registry. Pulls verified hardware configuration and AppleCare+ status.
+                    </p>
+                  </div>
+
+                  <SkeuoButton
+                    size="sm"
+                    variant="primary"
+                    disabled={isSyncingApple}
+                    onClick={handleSyncApple}
+                    icon={<RefreshCw className={`w-3.5 h-3.5 ${isSyncingApple ? 'animate-spin' : ''}`} />}
+                  >
+                    {isSyncingApple ? 'Querying GSX...' : 'Re-verify with Apple'}
+                  </SkeuoButton>
+                </div>
+
+                {appleSyncSuccess && (
+                  <div className="p-3 rounded-lg bg-emerald-950/40 border border-emerald-500/40 text-emerald-300 text-xs font-sans mb-4 flex items-center gap-2">
+                    <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-400" />
+                    <span>Successfully verified hardware entitlement with Apple GSX registry. Audit entry recorded.</span>
+                  </div>
+                )}
+
+                {asset.appleCoverage ? (
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                      <div className="instrument-well p-3.5 rounded-lg">
+                        <span className="text-[10px] font-sans uppercase tracking-wide text-slate-500 block mb-0.5">Coverage Status</span>
+                        <span className="text-sm font-sans font-bold text-emerald-400 flex items-center gap-1.5">
+                          <CheckCircle2 className="w-3.5 h-3.5" />
+                          {asset.appleCoverage.warrantyStatus}
+                        </span>
+                      </div>
+
+                      <div className="instrument-well p-3.5 rounded-lg">
+                        <span className="text-[10px] font-sans uppercase tracking-wide text-slate-500 block mb-0.5">Coverage End Date</span>
+                        <span className="text-sm font-mono font-bold text-slate-100">
+                          {asset.appleCoverage.coverageEndDate}
+                        </span>
+                      </div>
+
+                      <div className="instrument-well p-3.5 rounded-lg">
+                        <span className="text-[10px] font-sans uppercase tracking-wide text-slate-500 block mb-0.5">Days Remaining</span>
+                        <span className="text-sm font-mono font-bold text-blue-300">
+                          {asset.appleCoverage.daysRemaining} days
+                        </span>
+                      </div>
+
+                      <div className="instrument-well p-3.5 rounded-lg">
+                        <span className="text-[10px] font-sans uppercase tracking-wide text-slate-500 block mb-0.5">Agreement Number</span>
+                        <span className="text-xs font-mono font-bold text-slate-300 truncate block">
+                          {asset.appleCoverage.agreementNumber}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="instrument-well p-4 rounded-lg space-y-2.5 text-xs font-sans border border-white/[0.04]">
+                      <div className="flex justify-between items-center">
+                        <span className="text-slate-400">Verified Apple Model:</span>
+                        <span className="text-slate-200 font-semibold">{asset.appleCoverage.appleModelName}</span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-slate-400">Registered Purchase Date:</span>
+                        <span className="text-slate-200 font-mono">{asset.appleCoverage.purchaseDate}</span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-slate-400">AppleCare Plan:</span>
+                        <span className="text-blue-300 font-medium">{asset.appleCoverage.appleCarePlan}</span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-slate-400">Hardware Technical Support:</span>
+                        <span className="text-emerald-400 font-medium">Eligible for Priority Phone & Onsite</span>
+                      </div>
+                      <div className="flex justify-between items-center pt-2 border-t border-white/[0.04]">
+                        <span className="text-slate-400">Last Verified Timestamp:</span>
+                        <span className="text-slate-400 font-mono text-[11px]">{new Date(asset.appleCoverage.lastSyncTimestamp).toLocaleString()}</span>
                       </div>
                     </div>
                   </div>
                 ) : (
-                  <div className="skeuo-recessed p-5 rounded-lg text-center border border-slate-800">
-                    <span className="text-xs text-emerald-400 font-mono font-bold block mb-1">
-                      AVAILABLE IN FLEET STOCK
-                    </span>
-                    <p className="text-xs text-slate-400">
-                      Ready for immediate deployment to new hire or upgrade request.
-                    </p>
-                  </div>
-                )}
-
-                {/* Quick Action Buttons */}
-                <div className="flex flex-wrap items-center gap-2 mt-4 pt-3 border-t border-white/5">
-                  <SkeuoButton
-                    size="sm"
-                    variant="accent"
-                    onClick={() => setIsReassigning(!isReassigning)}
-                    icon={<UserCheck className="w-3.5 h-3.5" />}
-                  >
-                    {asset.assignedTo ? 'Reassign Equipment...' : 'Assign to Employee...'}
-                  </SkeuoButton>
-
-                  {asset.assignedTo && (
-                    <SkeuoButton
-                      size="sm"
-                      onClick={handleReturnToStock}
-                    >
-                      Check-in / Return to Stock
-                    </SkeuoButton>
-                  )}
-                </div>
-              </div>
-
-              {/* Physical Location & Procurement Card */}
-              <div className="skeuo-card p-4 rounded-xl border border-slate-700/60">
-                <div className="flex items-center gap-2 mb-3">
-                  <MapPin className="w-4 h-4 text-amber-400" />
-                  <span className="text-xs font-mono uppercase tracking-wider font-bold text-slate-300">
-                    Chassis Location & Financials
-                  </span>
-                </div>
-
-                <div className="skeuo-recessed p-3.5 rounded-lg border border-slate-800 space-y-2.5 text-xs font-mono">
-                  <div className="flex justify-between items-center">
-                    <span className="text-slate-400">DEPLOYMENT LOCATION:</span>
-                    <span className="text-slate-200 font-bold">{asset.location}</span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-slate-400">PURCHASE DATE:</span>
-                    <span className="text-slate-200">{asset.purchaseDate}</span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-slate-400">PURCHASE PRICE:</span>
-                    <span className="text-emerald-400 font-bold">${asset.purchasePrice.toFixed(2)}</span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-slate-400">ENTERPRISE SUPPLIER:</span>
-                    <span className="text-slate-200">{asset.supplier}</span>
-                  </div>
-                  <div className="flex justify-between items-center pt-2 border-t border-white/5">
-                    <span className="text-slate-400">WARRANTY EXPIRY:</span>
-                    <span className="text-amber-300 font-bold">{asset.warrantyExpiry}</span>
-                  </div>
-                </div>
-
-                {asset.linkedJiraKey && (
-                  <div className="mt-3 p-2.5 rounded-lg bg-sky-950/40 border border-sky-600/30 flex items-center justify-between">
-                    <div className="flex items-center gap-2 text-xs font-mono text-sky-300">
-                      <Tag className="w-3.5 h-3.5 text-sky-400" />
-                      Linked Jira: <strong>{asset.linkedJiraKey}</strong>
-                    </div>
-                    <span className="text-[10px] font-mono text-sky-400 uppercase">Tracked in Atlassian</span>
+                  <div className="p-8 text-center instrument-well rounded-xl text-xs font-sans text-slate-400">
+                    No GSX entitlement records currently cached. Click &ldquo;Re-verify with Apple&rdquo; to fetch coverage status.
                   </div>
                 )}
               </div>
             </div>
+          )}
 
-            {/* Reassignment Form Drawer (Prompt requirement: "reassigns xxx from John to Sina, it should show who did, when did and to which property") */}
-            {isReassigning && (
-              <form onSubmit={handleExecuteReassignment} className="p-5 rounded-xl skeuo-metal-panel border-2 border-sky-500/50 shadow-2xl animate-fade-in">
-                <div className="flex items-center justify-between pb-3 border-b border-white/10 mb-4">
-                  <div className="flex items-center gap-2">
-                    <UserCheck className="w-4 h-4 text-sky-400" />
-                    <h4 className="text-sm font-bold font-mono uppercase text-slate-100 tracking-wider">
-                      Reassign Asset Custody
-                    </h4>
-                  </div>
-                  <span className="text-xs font-mono text-slate-400">
-                    Operator: <strong className="text-sky-300">{currentUser}</strong>
-                  </span>
-                </div>
-
-                {/* Visual change preview banner */}
-                <div className="p-3 rounded-lg skeuo-recessed border border-slate-700/80 mb-4 flex items-center justify-between gap-3 text-xs font-mono">
-                  <div className="flex-1 truncate">
-                    <span className="text-slate-500 block text-[10px]">CURRENT ASSIGNEE</span>
-                    <span className="text-red-300 line-through truncate font-medium">
-                      {asset.assignedTo ? asset.assignedTo.name : 'IT Stock Pool'}
-                    </span>
-                  </div>
-                  <ArrowRight className="w-4 h-4 text-sky-400 shrink-0" />
-                  <div className="flex-1 truncate text-right">
-                    <span className="text-slate-500 block text-[10px]">NEW ASSIGNEE</span>
-                    <span className="text-emerald-400 font-bold truncate">
-                      {newAssigneeName || 'Enter name'}
-                    </span>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
-                  <div>
-                    <label className="text-[11px] font-mono uppercase text-slate-400 block mb-1">
-                      New Assignee Full Name *
-                    </label>
-                    <input
-                      type="text"
-                      required
-                      value={newAssigneeName}
-                      onChange={(e) => setNewAssigneeName(e.target.value)}
-                      placeholder="e.g. Sina Vance"
-                      className="w-full h-9 px-3 skeuo-recessed rounded-lg text-xs font-mono text-slate-100 border border-slate-700 focus:outline-none focus:border-sky-500"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="text-[11px] font-mono uppercase text-slate-400 block mb-1">
-                      Corporate Email *
-                    </label>
-                    <input
-                      type="email"
-                      required
-                      value={newAssigneeEmail}
-                      onChange={(e) => setNewAssigneeEmail(e.target.value)}
-                      placeholder="e.g. sina.vance@company.internal"
-                      className="w-full h-9 px-3 skeuo-recessed rounded-lg text-xs font-mono text-slate-100 border border-slate-700 focus:outline-none focus:border-sky-500"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="text-[11px] font-mono uppercase text-slate-400 block mb-1">
-                      Department
-                    </label>
-                    <input
-                      type="text"
-                      value={newDepartment}
-                      onChange={(e) => setNewDepartment(e.target.value)}
-                      placeholder="e.g. Product Management"
-                      className="w-full h-9 px-3 skeuo-recessed rounded-lg text-xs font-mono text-slate-100 border border-slate-700 focus:outline-none focus:border-sky-500"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="text-[11px] font-mono uppercase text-slate-400 block mb-1">
-                      Associated Jira Hardware Request
-                    </label>
-                    <select
-                      value={selectedJiraKey}
-                      onChange={(e) => setSelectedJiraKey(e.target.value)}
-                      className="w-full h-9 px-3 skeuo-recessed rounded-lg text-xs font-mono text-slate-100 border border-slate-700 focus:outline-none focus:border-sky-500"
-                    >
-                      <option value="">-- None / Standalone --</option>
-                      {jiraTickets.map(t => (
-                        <option key={t.key} value={t.key}>
-                          {t.key}: {t.summary.slice(0, 45)}...
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-
-                <div className="mb-4">
-                  <label className="text-[11px] font-mono uppercase text-slate-400 block mb-1">
-                    Audit Log Reason / Notes *
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={reassignReason}
-                    onChange={(e) => setReassignReason(e.target.value)}
-                    placeholder="e.g. Reassigned from John Doe to Sina Vance per Jira SYS-1084 hardware upgrade"
-                    className="w-full h-9 px-3 skeuo-recessed rounded-lg text-xs font-mono text-slate-100 border border-slate-700 focus:outline-none focus:border-sky-500"
-                  />
-                </div>
-
-                <div className="flex items-center justify-end gap-2 pt-3 border-t border-white/10">
-                  <SkeuoButton
-                    type="button"
-                    size="sm"
-                    onClick={() => setIsReassigning(false)}
-                  >
-                    Cancel
-                  </SkeuoButton>
-                  <SkeuoButton
-                    type="submit"
-                    variant="emerald"
-                    size="sm"
-                    icon={<CheckCircle2 className="w-3.5 h-3.5" />}
-                  >
-                    Commit Reassignment & Record Change Log
-                  </SkeuoButton>
-                </div>
-              </form>
-            )}
-
-            {/* Hardware Specification Grid */}
-            <div className="skeuo-card p-4 rounded-xl border border-slate-700/60">
-              <div className="flex items-center justify-between mb-3">
-                <div className="flex items-center gap-2">
-                  <Cpu className="w-4 h-4 text-sky-400" />
-                  <span className="text-xs font-mono uppercase tracking-wider font-bold text-slate-300">
-                    Hardware Specifications
-                  </span>
-                </div>
-                {isApple && (
-                  <span className="text-[10px] font-mono text-sky-400 bg-sky-950/60 px-2 py-0.5 rounded border border-sky-600/30">
-                    Verified via Apple GSX API
-                  </span>
-                )}
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                <div className="skeuo-recessed p-3 rounded-lg border border-slate-800">
-                  <span className="text-[10px] font-mono text-slate-400 uppercase block mb-1">PROCESSOR</span>
-                  <span className="text-xs font-bold text-slate-100 leading-tight block">
-                    {asset.specs.processor}
-                  </span>
-                </div>
-                <div className="skeuo-recessed p-3 rounded-lg border border-slate-800">
-                  <span className="text-[10px] font-mono text-slate-400 uppercase block mb-1">RAM / MEMORY</span>
-                  <span className="text-xs font-bold text-sky-300 leading-tight block">
-                    {asset.specs.ram}
-                  </span>
-                </div>
-                <div className="skeuo-recessed p-3 rounded-lg border border-slate-800">
-                  <span className="text-[10px] font-mono text-slate-400 uppercase block mb-1">INTERNAL SSD</span>
-                  <span className="text-xs font-bold text-emerald-300 leading-tight block">
-                    {asset.specs.storage}
-                  </span>
-                </div>
-              </div>
-
-              {asset.specs.display && (
-                <div className="skeuo-recessed p-3 rounded-lg border border-slate-800 mt-3 text-xs font-mono flex items-center justify-between">
-                  <span className="text-slate-400">DISPLAY PANEL:</span>
-                  <span className="text-slate-200 font-semibold">{asset.specs.display}</span>
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-
-        {/* Tab 2: Apple GSX API & Warranty Coverage */}
-        {activeTab === 'apple' && (
-          <div className="mt-5 space-y-5">
-            {/* Apple API Live Status Header */}
-            <div className="skeuo-card p-5 rounded-xl border border-sky-600/30 relative overflow-hidden">
-              <div className="flex flex-wrap items-center justify-between gap-3 pb-4 border-b border-white/10">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-gradient-to-b from-slate-700 to-slate-900 border border-slate-600 flex items-center justify-center">
-                    <ShieldCheck className="w-5 h-5 text-sky-400" />
-                  </div>
-                  <div>
-                    <h3 className="text-sm font-bold text-slate-100 font-mono uppercase tracking-wide">
-                      Apple Global Service Exchange (GSX) & Coverage API
-                    </h3>
-                    <p className="text-xs text-slate-400 font-mono">
-                      Query live Apple coverage, warranty expiration, and factory hardware configuration
-                    </p>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-2">
-                  {appleSyncSuccess && (
-                    <span className="text-xs text-emerald-400 font-mono flex items-center gap-1">
-                      <CheckCircle2 className="w-3.5 h-3.5" /> GSX Sync Complete!
-                    </span>
-                  )}
-                  <SkeuoButton
-                    size="sm"
-                    variant="accent"
-                    onClick={handleSyncApple}
-                    disabled={isSyncingApple}
-                    icon={<RefreshCw className={`w-3.5 h-3.5 ${isSyncingApple ? 'animate-spin' : ''}`} />}
-                  >
-                    {isSyncingApple ? 'Querying Apple GSX...' : 'Sync with Apple API'}
-                  </SkeuoButton>
-                </div>
-              </div>
-
-              {/* Coverage Details Grid */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 mt-4">
-                <div className="skeuo-recessed p-3 rounded-lg border border-slate-800">
-                  <span className="text-[10px] font-mono text-slate-400 uppercase block mb-1">
-                    COVERAGE STATUS
-                  </span>
-                  <div className="flex items-center gap-2">
-                    <LedIndicator 
-                      color={asset.appleCoverage?.warrantyStatus.includes('Active') ? 'green' : 'red'} 
-                      size="sm" 
-                    />
-                    <span className="text-xs font-bold text-slate-100 font-mono">
-                      {asset.appleCoverage?.warrantyStatus || 'Active AppleCare+'}
-                    </span>
-                  </div>
-                </div>
-
-                <div className="skeuo-recessed p-3 rounded-lg border border-slate-800">
-                  <span className="text-[10px] font-mono text-slate-400 uppercase block mb-1">
-                    PURCHASE DATE
-                  </span>
-                  <span className="text-xs font-bold text-slate-200 font-mono">
-                    {asset.appleCoverage?.purchaseDate || asset.purchaseDate}
-                  </span>
-                </div>
-
-                <div className="skeuo-recessed p-3 rounded-lg border border-slate-800">
-                  <span className="text-[10px] font-mono text-slate-400 uppercase block mb-1">
-                    COVERAGE END DATE
-                  </span>
-                  <span className="text-xs font-bold text-sky-300 font-mono">
-                    {asset.appleCoverage?.coverageEndDate || asset.warrantyExpiry}
-                  </span>
-                </div>
-
-                <div className="skeuo-recessed p-3 rounded-lg border border-slate-800">
-                  <span className="text-[10px] font-mono text-slate-400 uppercase block mb-1">
-                    AGREEMENT NUMBER
-                  </span>
-                  <span className="text-xs font-bold text-amber-300 font-mono truncate block">
-                    {asset.appleCoverage?.agreementNumber || 'AGR-ACPLUS-8492019'}
-                  </span>
-                </div>
-              </div>
-
-              {/* Service & Support Breakdown */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-3">
-                <div className="p-3 rounded-lg bg-slate-900/60 border border-slate-800 flex items-center justify-between text-xs font-mono">
-                  <span className="text-slate-400">HARDWARE REPAIRS & SERVICE:</span>
-                  <span className="text-emerald-400 font-bold flex items-center gap-1.5">
-                    <CheckCircle2 className="w-3.5 h-3.5" /> Covered (Zero Deductible Fleet)
-                  </span>
-                </div>
-                <div className="p-3 rounded-lg bg-slate-900/60 border border-slate-800 flex items-center justify-between text-xs font-mono">
-                  <span className="text-slate-400">TELEPHONE TECHNICAL SUPPORT:</span>
-                  <span className="text-emerald-400 font-bold flex items-center gap-1.5">
-                    <CheckCircle2 className="w-3.5 h-3.5" /> Active (24/7 Priority Access)
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            {/* Apple Detailed Silicon & Hardware Specs */}
-            <div className="skeuo-card p-5 rounded-xl border border-slate-700/60">
-              <h4 className="text-xs font-bold font-mono text-slate-300 uppercase tracking-wider mb-3">
-                Apple Factory Build Configuration
-              </h4>
-              
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="skeuo-recessed p-4 rounded-xl border border-slate-800">
-                  <div className="flex items-center gap-2 text-sky-400 mb-2">
-                    <Cpu className="w-4 h-4" />
-                    <span className="text-xs font-bold font-mono uppercase">Apple Silicon SOC</span>
-                  </div>
-                  <div className="text-sm font-bold text-white mb-1">
-                    {asset.specs.processor}
-                  </div>
-                  <div className="text-[11px] text-slate-400 font-mono">
-                    Integrated hardware ray tracing, ProRes accelerator & dedicated Neural Engine.
-                  </div>
-                </div>
-
-                <div className="skeuo-recessed p-4 rounded-xl border border-slate-800">
-                  <div className="flex items-center gap-2 text-sky-400 mb-2">
-                    <Activity className="w-4 h-4" />
-                    <span className="text-xs font-bold font-mono uppercase">Unified RAM</span>
-                  </div>
-                  <div className="text-sm font-bold text-white mb-1">
-                    {asset.specs.ram}
-                  </div>
-                  <div className="text-[11px] text-slate-400 font-mono">
-                    Zero-copy architecture shared directly between CPU cores and GPU shaders.
-                  </div>
-                </div>
-
-                <div className="skeuo-recessed p-4 rounded-xl border border-slate-800">
-                  <div className="flex items-center gap-2 text-sky-400 mb-2">
-                    <HardDrive className="w-4 h-4" />
-                    <span className="text-xs font-bold font-mono uppercase">NVMe SSD Storage</span>
-                  </div>
-                  <div className="text-sm font-bold text-white mb-1">
-                    {asset.specs.storage}
-                  </div>
-                  <div className="text-[11px] text-slate-400 font-mono">
-                    PCIe Gen4 throughput up to 7,400 MB/s sequential read. Hardware AES encrypted.
-                  </div>
-                </div>
-              </div>
-
-              {/* Battery Diagnostic Telemetry */}
-              {asset.specs.batteryHealth !== undefined && (
-                <div className="mt-4 pt-3 border-t border-white/5 flex flex-wrap items-center justify-between gap-4 text-xs font-mono">
-                  <div className="flex items-center gap-2">
-                    <span className="text-slate-400">BATTERY HEALTH:</span>
-                    <span className={`font-bold ${asset.specs.batteryHealth >= 80 ? 'text-emerald-400' : 'text-red-400'}`}>
-                      {asset.specs.batteryHealth}% Maximum Capacity
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-slate-400">CYCLE COUNT:</span>
-                    <span className="text-slate-200 font-bold">{asset.specs.batteryCycles || 0} cycles</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-slate-400">LAST GSX AUDIT:</span>
-                    <span className="text-slate-400">{asset.appleCoverage?.lastSyncTimestamp.slice(0, 10)}</span>
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-
-        {/* Tab 3: Change Logs & Audit Trail */}
-        {activeTab === 'changelog' && (
-          <div className="mt-5 space-y-4">
-            <div className="flex items-center justify-between pb-2 border-b border-white/10">
-              <div>
-                <h3 className="text-sm font-bold font-mono uppercase tracking-wider text-slate-200">
-                  Asset Change Log History
+          {/* TAB 3: CHANGE LOG & AUDIT TRAIL */}
+          {activeTab === 'changelog' && (
+            <div className="space-y-3">
+              <div className="flex items-center justify-between pb-2 border-b border-white/[0.06]">
+                <h3 className="text-xs font-sans font-bold uppercase tracking-wider text-slate-200">
+                  Audit History for {asset.assetTag}
                 </h3>
-                <p className="text-xs text-slate-400 font-mono">
-                  Tamper-evident audit record of reassignments, status transitions, and spec alterations
-                </p>
+                <span className="text-xs font-sans text-slate-400">
+                  {asset.changeLogs.length} logged modifications
+                </span>
               </div>
-              <SkeuoButton
-                size="sm"
-                variant="accent"
-                onClick={() => setIsReassigning(true)}
-                icon={<UserCheck className="w-3.5 h-3.5" />}
-              >
-                New Reassignment
-              </SkeuoButton>
-            </div>
 
-            {asset.changeLogs.length === 0 ? (
-              <div className="p-8 rounded-xl skeuo-recessed text-center text-slate-400 font-mono text-xs">
-                No previous changes recorded for this asset yet.
-              </div>
-            ) : (
-              <div className="space-y-3">
-                {asset.changeLogs.map((log) => (
-                  <div 
-                    key={log.id} 
-                    className="skeuo-card p-4 rounded-xl border border-slate-700/60 hover:border-slate-600 transition-all"
-                  >
-                    <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
+              {asset.changeLogs.length === 0 ? (
+                <div className="p-8 text-center instrument-well rounded-xl text-xs font-sans text-slate-400">
+                  No previous change log entries recorded for this unit.
+                </div>
+              ) : (
+                asset.changeLogs.map(log => (
+                  <div key={log.id} className="instrument-card rounded-xl p-3.5 space-y-2 text-xs font-sans">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
                       <div className="flex items-center gap-2">
-                        <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-sky-950 text-sky-300 border border-sky-600/40 font-bold uppercase">
-                          {log.action}
-                        </span>
-                        <span className="text-xs font-mono font-bold text-slate-200">
-                          Property: <strong className="text-amber-300">{log.property}</strong>
+                        <span className="font-semibold text-slate-200">{log.action}</span>
+                        <span className="text-[10px] px-1.5 py-0.2 rounded bg-amber-950/60 text-amber-300 border border-amber-800/40 font-mono">
+                          {log.property}
                         </span>
                       </div>
+                      <span className="text-[11px] text-slate-400 font-mono">
+                        {new Date(log.timestamp).toLocaleString()}
+                      </span>
+                    </div>
 
-                      <div className="flex items-center gap-2 text-xs text-slate-400 font-mono">
-                        <Clock className="w-3.5 h-3.5" />
-                        <span>{new Date(log.timestamp).toLocaleString()}</span>
+                    <div className="instrument-well p-2.5 rounded-lg grid grid-cols-1 sm:grid-cols-2 gap-2 text-[11px]">
+                      <div>
+                        <span className="text-slate-500 block text-[9px] uppercase font-sans">Previous:</span>
+                        <span className="text-rose-300 font-mono line-through truncate block">{log.oldValue}</span>
+                      </div>
+                      <div>
+                        <span className="text-slate-500 block text-[9px] uppercase font-sans">Updated:</span>
+                        <span className="text-emerald-400 font-mono font-semibold truncate block">{log.newValue}</span>
                       </div>
                     </div>
 
-                    {/* Visual Old Value -> New Value Diff */}
-                    <div className="skeuo-recessed p-3 rounded-lg border border-slate-800 text-xs font-mono grid grid-cols-1 sm:grid-cols-2 gap-2 my-2">
-                      <div>
-                        <span className="text-slate-500 block text-[10px] uppercase">BEFORE CHANGE</span>
-                        <span className="text-red-300 font-medium line-through break-words">
-                          {log.oldValue}
-                        </span>
-                      </div>
-                      <div>
-                        <span className="text-slate-500 block text-[10px] uppercase">AFTER CHANGE</span>
-                        <span className="text-emerald-400 font-bold break-words">
-                          {log.newValue}
-                        </span>
-                      </div>
-                    </div>
-
-                    {/* Operator and Reason Footer */}
-                    <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-white/5 text-[11px] font-mono">
-                      <div className="text-slate-400">
-                        Performed By: <strong className="text-sky-300">{log.performedBy}</strong>
-                      </div>
-                      {log.reason && (
-                        <div className="text-slate-400 italic">
-                          &ldquo;{log.reason}&rdquo;
-                        </div>
-                      )}
+                    <div className="flex flex-wrap items-center justify-between gap-2 text-[11px] text-slate-400 pt-1">
+                      <span>Operator: <strong className="text-slate-200">{log.performedBy}</strong></span>
+                      {log.reason && <span className="italic">&ldquo;{log.reason}&rdquo;</span>}
                       {log.jiraTicketKey && (
-                        <span className="px-1.5 py-0.5 rounded bg-blue-950 text-blue-300 text-[10px] border border-blue-600/30">
-                          Jira: {log.jiraTicketKey}
+                        <span className="font-mono text-blue-300 px-1.5 py-0.2 rounded bg-blue-950 border border-blue-800/40">
+                          {log.jiraTicketKey}
                         </span>
                       )}
                     </div>
                   </div>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Tab 4: Physical Barcode Tag Plate */}
-        {activeTab === 'label' && (
-          <div className="mt-5 space-y-4">
-            <div className="text-center max-w-md mx-auto mb-4">
-              <h3 className="text-sm font-bold font-mono uppercase text-slate-200">
-                Skeuomorphic Laser-Etched Asset Tag
-              </h3>
-              <p className="text-xs text-slate-400 font-mono mt-1">
-                Printable metallic property barcode plate ready for chassis adhesion
-              </p>
+                ))
+              )}
             </div>
+          )}
 
-            <div className="max-w-md mx-auto">
+          {/* TAB 4: PHYSICAL ASSET TAG PLATE */}
+          {activeTab === 'label' && (
+            <div className="space-y-3 max-w-lg mx-auto py-2">
               <BarcodeLabelPlate asset={asset} showPrintButton={true} />
             </div>
-          </div>
-        )}
-
+          )}
+        </div>
       </div>
     </div>
   );

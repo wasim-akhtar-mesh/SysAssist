@@ -197,7 +197,7 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-[#0d0f12] text-slate-100 flex flex-col selection:bg-sky-500 selection:text-white">
+    <div className="min-h-screen bg-[#0d0f12] text-slate-100 flex flex-col selection:bg-blue-600 selection:text-white">
       
       {/* Header Bar */}
       <HeaderBar
@@ -283,17 +283,17 @@ export default function App() {
         currentUser={CURRENT_USER}
       />
 
-      {/* Subtle Skeuomorphic Baseboard / Chassis Footer */}
-      <footer className="skeuo-metal-header py-3 px-6 border-t border-black text-center text-xs font-mono text-slate-500 flex flex-wrap items-center justify-between gap-2">
+      {/* Precision Instrument Chassis Status Footer */}
+      <footer className="bg-[#101318] py-3 px-6 border-t border-white/[0.06] text-center text-xs font-sans text-slate-400 flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-2">
-          <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-          <span>SysAssist Telemetry Node: <strong>ONLINE</strong></span>
+          <span className="w-2 h-2 rounded-full bg-emerald-400" />
+          <span>SysAssist Core Engine: <strong className="text-slate-200">Online</strong></span>
         </div>
         <div>
-          <span>MeshConnect Enterprise Hardware Management System</span>
+          <span>Enterprise Asset Management System</span>
         </div>
-        <div className="text-[11px] text-slate-400">
-          <span>Barcode Detector • Apple GSX API • Jira Cloud Sync</span>
+        <div className="text-[11px] text-slate-500 font-mono">
+          <span>Barcode Recognition • Apple GSX Service • Jira Cloud Sandbox</span>
         </div>
       </footer>
 

@@ -1,196 +1,232 @@
 @import "tailwindcss";
 
 @layer base {
+  :root {
+    color-scheme: dark;
+  }
+
   body {
-    background-color: #0d0f12;
+    background-color: #0f1115;
     color: #e2e8f0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
     font-feature-settings: "cv02", "cv03", "cv04", "cv11";
     overflow-x: hidden;
   }
+
+  /* Consistent Focus Indicators */
+  :focus-visible {
+    outline: 2px solid #3b82f6;
+    outline-offset: 2px;
+  }
 }
 
-/* Skeuomorphic Dark Textures and Surfaces */
-.skeuo-metal-panel {
-  background: linear-gradient(180deg, #1f242d 0%, #15181f 50%, #0f1217 100%);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  box-shadow: 
-    0 10px 25px -5px rgba(0, 0, 0, 0.8),
-    0 4px 6px -2px rgba(0, 0, 0, 0.6),
-    inset 0 1px 1px rgba(255, 255, 255, 0.15),
-    inset 0 -1px 2px rgba(0, 0, 0, 0.8);
-}
+/* --------------------------------------------------------------------------
+   PRECISION INSTRUMENT DESIGN SYSTEM TOKENS
+   Calm, tactile, restrained, matte dark graphite & anodized surfaces.
+   One consistent light source from the upper-left.
+   -------------------------------------------------------------------------- */
 
-.skeuo-metal-header {
-  background: linear-gradient(180deg, #2a303c 0%, #1c212a 60%, #14171d 100%);
-  border-bottom: 1px solid rgba(0, 0, 0, 0.8);
-  box-shadow: 
-    0 4px 12px rgba(0, 0, 0, 0.5),
-    inset 0 1px 0 rgba(255, 255, 255, 0.2);
-}
-
-.skeuo-recessed {
-  background: linear-gradient(180deg, #090a0d 0%, #0d0f13 100%);
-  border: 1px solid rgba(0, 0, 0, 0.9);
-  box-shadow: 
-    inset 0 2px 5px rgba(0, 0, 0, 0.9),
-    inset 0 1px 2px rgba(0, 0, 0, 0.95),
-    0 1px 0 rgba(255, 255, 255, 0.05);
-}
-
-.skeuo-card {
-  background: linear-gradient(180deg, #1b2029 0%, #13171e 100%);
+/* Main Chassis & Instrument Panels */
+.instrument-panel {
+  background-color: #15181e;
   border: 1px solid rgba(255, 255, 255, 0.07);
   box-shadow: 
-    0 6px 16px -2px rgba(0, 0, 0, 0.6),
-    inset 0 1px 0 rgba(255, 255, 255, 0.12),
-    inset 0 -1px 0 rgba(0, 0, 0, 0.5);
+    0 10px 24px -4px rgba(0, 0, 0, 0.5),
+    0 2px 6px -1px rgba(0, 0, 0, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06);
 }
 
-.skeuo-btn {
-  background: linear-gradient(180deg, #2b3341 0%, #1d222b 50%, #161a22 100%);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+/* Header Rack Bar */
+.instrument-header {
+  background-color: #13161c;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
   box-shadow: 
-    0 4px 6px -1px rgba(0, 0, 0, 0.6),
-    0 2px 4px -1px rgba(0, 0, 0, 0.5),
-    inset 0 1px 1px rgba(255, 255, 255, 0.25),
-    inset 0 -1px 2px rgba(0, 0, 0, 0.6);
-  transition: all 0.1s ease;
+    0 4px 16px rgba(0, 0, 0, 0.45),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.6);
 }
 
-.skeuo-btn:hover {
-  background: linear-gradient(180deg, #343d4e 0%, #242b37 50%, #1b2029 100%);
+/* Recessed Data Wells & Inset Compartments */
+.instrument-well {
+  background-color: #0b0d10;
+  border: 1px solid rgba(255, 255, 255, 0.04);
+  box-shadow: 
+    inset 0 2px 4px rgba(0, 0, 0, 0.7),
+    0 1px 0 rgba(255, 255, 255, 0.03);
+}
+
+/* Raised Equipment Cards (Single clear depth level) */
+.instrument-card {
+  background-color: #171b22;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  box-shadow: 
+    0 4px 12px -2px rgba(0, 0, 0, 0.35),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  transition: border-color 0.15s ease, background-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.instrument-card:hover {
+  background-color: #1a1e27;
+  border-color: rgba(255, 255, 255, 0.12);
+  box-shadow: 
+    0 6px 18px -2px rgba(0, 0, 0, 0.45),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+
+/* Tactile Machined Push Buttons */
+.instrument-btn {
+  background-color: #1e232d;
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-top-color: rgba(255, 255, 255, 0.14);
+  box-shadow: 
+    0 2px 4px rgba(0, 0, 0, 0.35),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  transition: all 0.12s ease;
+}
+
+.instrument-btn:hover {
+  background-color: #252b36;
   border-color: rgba(255, 255, 255, 0.16);
+  border-top-color: rgba(255, 255, 255, 0.22);
 }
 
-.skeuo-btn:active {
+.instrument-btn:active {
   transform: translateY(1px);
-  background: linear-gradient(180deg, #14171d 0%, #1a1f27 100%);
+  background-color: #171b23;
   box-shadow: 
-    inset 0 2px 4px rgba(0, 0, 0, 0.8),
-    0 1px 1px rgba(255, 255, 255, 0.05);
+    inset 0 2px 4px rgba(0, 0, 0, 0.6),
+    0 0 0 1px rgba(0, 0, 0, 0.2);
 }
 
-.skeuo-btn-accent {
-  background: linear-gradient(180deg, #0284c7 0%, #0369a1 50%, #075985 100%);
-  border: 1px solid rgba(125, 211, 252, 0.3);
+/* Primary Cobalt Action Button */
+.instrument-btn-primary {
+  background: linear-gradient(180deg, #2563eb 0%, #1d4ed8 100%);
+  border: 1px solid #3b82f6;
+  border-top-color: #60a5fa;
   box-shadow: 
-    0 4px 10px rgba(2, 132, 199, 0.3),
-    inset 0 1px 1px rgba(255, 255, 255, 0.4),
-    inset 0 -1px 2px rgba(0, 0, 0, 0.6);
+    0 2px 6px rgba(29, 78, 216, 0.35),
+    inset 0 1px 0 rgba(255, 255, 255, 0.25);
+  color: #ffffff;
+  transition: all 0.12s ease;
 }
 
-.skeuo-btn-accent:hover {
-  background: linear-gradient(180deg, #0ea5e9 0%, #0284c7 50%, #0369a1 100%);
+.instrument-btn-primary:hover {
+  background: linear-gradient(180deg, #3b82f6 0%, #2563eb 100%);
+  box-shadow: 
+    0 4px 10px rgba(29, 78, 216, 0.45),
+    inset 0 1px 0 rgba(255, 255, 255, 0.35);
 }
 
-.skeuo-btn-accent:active {
+.instrument-btn-primary:active {
   transform: translateY(1px);
-  background: linear-gradient(180deg, #075985 0%, #0369a1 100%);
-  box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.7);
+  background: #1e40af;
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.6);
 }
 
-.skeuo-btn-emerald {
-  background: linear-gradient(180deg, #10b981 0%, #059669 50%, #047857 100%);
-  border: 1px solid rgba(110, 231, 183, 0.3);
-  box-shadow: 
-    0 4px 10px rgba(16, 185, 129, 0.3),
-    inset 0 1px 1px rgba(255, 255, 255, 0.4),
-    inset 0 -1px 2px rgba(0, 0, 0, 0.6);
+/* Status / Functional Button Variants */
+.instrument-btn-emerald {
+  background: linear-gradient(180deg, #059669 0%, #047857 100%);
+  border: 1px solid #10b981;
+  border-top-color: #34d399;
+  box-shadow: 0 2px 6px rgba(4, 120, 87, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  color: #ffffff;
 }
-
-.skeuo-btn-emerald:active {
+.instrument-btn-emerald:hover {
+  background: linear-gradient(180deg, #10b981 0%, #059669 100%);
+}
+.instrument-btn-emerald:active {
   transform: translateY(1px);
-  box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.7);
+  background: #065f46;
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.6);
 }
 
-/* LED Indicators */
-.led-housing {
-  background: radial-gradient(circle at 35% 35%, #2a313d, #0d0f13);
+/* Calibrated Status LED Indicators */
+.led-housing-precision {
+  background-color: #0d1015;
   border: 1px solid rgba(255, 255, 255, 0.08);
   box-shadow: 
-    inset 0 1px 3px rgba(0, 0, 0, 0.9),
-    0 1px 0 rgba(255, 255, 255, 0.08);
-}
-
-.led-green {
-  background: radial-gradient(circle at 35% 35%, #86efac, #22c55e 50%, #15803d);
-  box-shadow: 
-    0 0 8px #22c55e,
-    0 0 16px rgba(34, 197, 94, 0.5),
-    inset 0 1px 1px rgba(255, 255, 255, 0.8);
-}
-
-.led-amber {
-  background: radial-gradient(circle at 35% 35%, #fde047, #eab308 50%, #a16207);
-  box-shadow: 
-    0 0 8px #eab308,
-    0 0 16px rgba(234, 179, 8, 0.5),
-    inset 0 1px 1px rgba(255, 255, 255, 0.8);
-}
-
-.led-red {
-  background: radial-gradient(circle at 35% 35%, #fca5a5, #ef4444 50%, #b91c1c);
-  box-shadow: 
-    0 0 8px #ef4444,
-    0 0 16px rgba(239, 68, 68, 0.5),
-    inset 0 1px 1px rgba(255, 255, 255, 0.8);
-}
-
-.led-blue {
-  background: radial-gradient(circle at 35% 35%, #7dd3fc, #0284c7 50%, #0369a1);
-  box-shadow: 
-    0 0 8px #0284c7,
-    0 0 16px rgba(2, 132, 199, 0.5),
-    inset 0 1px 1px rgba(255, 255, 255, 0.8);
-}
-
-/* Metallic Screws */
-.screw-head {
-  background: radial-gradient(circle at 35% 35%, #525a69 0%, #2f3540 60%, #1a1e24 100%);
-  box-shadow: 
-    inset 0 1px 1px rgba(255, 255, 255, 0.3),
-    0 1px 2px rgba(0, 0, 0, 0.8);
-}
-
-/* Engraved Text */
-.text-engraved {
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.9), 0 -1px 0 rgba(255, 255, 255, 0.05);
-}
-
-/* Segmented Display look */
-.digital-display {
-  background: #080a0c;
-  color: #38bdf8;
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-  box-shadow: 
-    inset 0 2px 6px rgba(0, 0, 0, 0.9),
+    inset 0 1px 2px rgba(0, 0, 0, 0.8),
     0 1px 0 rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(56, 189, 248, 0.15);
 }
 
-/* Glass lens for scanner */
-.scanner-lens {
-  background: radial-gradient(circle at 50% 30%, rgba(56, 189, 248, 0.1), rgba(15, 23, 42, 0.85) 75%);
-  backdrop-filter: blur(2px);
-  border: 2px solid rgba(56, 189, 248, 0.3);
+.led-indicator-green {
+  background-color: #10b981;
+  box-shadow: 0 0 6px rgba(16, 185, 129, 0.6);
+}
+
+.led-indicator-amber {
+  background-color: #f59e0b;
+  box-shadow: 0 0 6px rgba(245, 158, 11, 0.6);
+}
+
+.led-indicator-red {
+  background-color: #ef4444;
+  box-shadow: 0 0 6px rgba(239, 68, 68, 0.6);
+}
+
+.led-indicator-blue {
+  background-color: #3b82f6;
+  box-shadow: 0 0 6px rgba(59, 130, 246, 0.6);
+}
+
+/* Digital Measuring Readout (LCD/OLED style) */
+.instrument-readout {
+  background-color: #090b0e;
+  border: 1px solid rgba(255, 255, 255, 0.06);
   box-shadow: 
-    inset 0 0 25px rgba(56, 189, 248, 0.2),
-    0 0 15px rgba(0, 0, 0, 0.9);
+    inset 0 1px 4px rgba(0, 0, 0, 0.85),
+    0 1px 0 rgba(255, 255, 255, 0.04);
 }
 
-/* Laser sweep animation */
-@keyframes laserSweep {
-  0% { top: 5%; opacity: 0.8; }
-  50% { top: 90%; opacity: 1; }
-  100% { top: 5%; opacity: 0.8; }
+/* Optical Reticle Scanner Lens */
+.reticle-lens {
+  background-color: #07090c;
+  border: 1px solid rgba(59, 130, 246, 0.25);
+  box-shadow: 
+    inset 0 0 20px rgba(0, 0, 0, 0.9),
+    0 4px 12px rgba(0, 0, 0, 0.6);
 }
 
-.laser-line {
+/* Laser scan line (controlled, subtle) */
+@keyframes opticalLaserSweep {
+  0% { top: 8%; opacity: 0.7; }
+  50% { top: 92%; opacity: 0.9; }
+  100% { top: 8%; opacity: 0.7; }
+}
+
+.optical-laser {
   position: absolute;
-  left: 0;
-  right: 0;
-  height: 2px;
-  background: linear-gradient(90deg, transparent 0%, #ef4444 20%, #ff8888 50%, #ef4444 80%, transparent 100%);
-  box-shadow: 0 0 12px #ef4444, 0 0 4px #ffffff;
-  animation: laserSweep 2s ease-in-out infinite;
+  left: 5%;
+  right: 5%;
+  height: 1.5px;
+  background: linear-gradient(90deg, transparent 0%, #3b82f6 20%, #93c5fd 50%, #3b82f6 80%, transparent 100%);
+  box-shadow: 0 0 8px rgba(59, 130, 246, 0.8);
+  animation: opticalLaserSweep 2.2s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+
+/* Respect Reduced Motion */
+@media (prefers-reduced-motion: reduce) {
+  .optical-laser {
+    animation: none;
+    top: 50%;
+    opacity: 0.5;
+  }
+  .instrument-btn, .instrument-card {
+    transition: none !important;
+  }
+}
+
+/* Sleek dark scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #0b0d10;
+}
+::-webkit-scrollbar-thumb {
+  background: #252b36;
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #374151;
 }
