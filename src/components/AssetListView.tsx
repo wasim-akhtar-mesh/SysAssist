@@ -17,7 +17,8 @@ import {
   X,
   ArrowRight,
   HardDrive,
-  Cpu
+  Cpu,
+  MapPin
 } from 'lucide-react';
 import { Asset, AssetCategory, AssetStatus } from '../types';
 import { SkeuoButton, LedIndicator, StatusBadge } from './SkeuoComponents';
@@ -41,7 +42,7 @@ export const AssetListView: React.FC<AssetListViewProps> = ({
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid');
 
-  const categories: { label: string; value: string; count: number }[] = useMemo(() => [
+  const categories = useMemo(() => [
     { label: 'All Equipment', value: 'ALL', count: assets.length },
     { label: 'Laptops', value: 'Laptop', count: assets.filter(a => a.category === 'Laptop').length },
     { label: 'Displays', value: 'Display', count: assets.filter(a => a.category === 'Display').length },
@@ -79,76 +80,24 @@ export const AssetListView: React.FC<AssetListViewProps> = ({
   };
 
   return (
-    <div className="space-y-4">
-      {/* Category Pills & Quick Intake Row */}
-      <div className="flex flex-wrap items-center justify-between gap-3 pb-1 border-b border-white/[0.06]">
-        {/* Category Filters (Horizontal scroll with no page overflow) */}
-        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 max-w-full no-scrollbar">
-          {categories.map(cat => {
-            const isSelected = selectedCategory === cat.value;
-            return (
-              <button
-                key={cat.value}
-                onClick={() => {
-                  soundFx.playMechanicalClick();
-                  setSelectedCategory(cat.value);
-                }}
-                className={`px-3 py-1.5 rounded-lg text-xs font-sans font-medium whitespace-nowrap transition-all cursor-pointer ${
-                  isSelected
-                    ? 'bg-[#1e2736] text-blue-200 border border-blue-500/50 shadow-xs'
-                    : 'bg-[#13161c] text-slate-400 hover:text-slate-200 border border-white/[0.05] hover:border-white/[0.1]'
-                }`}
-              >
-                <span>{cat.label}</span>
-                <span className={`ml-1.5 text-[10px] px-1 py-0.2 rounded font-mono ${
-                  isSelected ? 'bg-blue-500/30 text-blue-200' : 'text-slate-500'
-                }`}>
-                  {cat.count}
-                </span>
-              </button>
-            );
-          })}
-        </div>
-
-        {/* Action Controls */}
-        <div className="flex items-center gap-2 shrink-0 ml-auto">
-          <SkeuoButton
-            size="sm"
-            variant="standard"
-            onClick={onOpenScanner}
-            icon={<Scan className="w-3.5 h-3.5 text-blue-400" />}
-          >
-            Barcode Scan
-          </SkeuoButton>
-
-          <SkeuoButton
-            size="sm"
-            variant="primary"
-            onClick={onNewAssetClick}
-            icon={<Plus className="w-3.5 h-3.5" />}
-          >
-            Add Hardware
-          </SkeuoButton>
-        </div>
-      </div>
-
-      {/* Filter and Search Bar */}
-      <div className="p-3 rounded-xl instrument-panel flex flex-wrap items-center justify-between gap-3">
+    <div className="space-y-3.5">
+      {/* Single Efficient Toolbar: Search, Filters, View Modes */}
+      <div className="p-2.5 rounded-lg ti-surface flex flex-wrap items-center justify-between gap-2.5">
         {/* Search Input */}
-        <div className="flex items-center gap-2 flex-1 min-w-[240px]">
+        <div className="flex items-center gap-2 flex-1 min-w-[240px] sm:min-w-[320px]">
           <div className="relative w-full">
             <input
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search by Tag (AST-8821), Serial, Barcode, Model, or Custodian..."
-              className="w-full h-9 pl-9 pr-8 instrument-well rounded-lg text-xs font-sans text-slate-100 placeholder-slate-500 border border-white/[0.06] focus:border-blue-500 focus:outline-none transition-colors"
+              placeholder="Search Tag (AST-8821), Serial, Barcode, Model, Custodian..."
+              className="w-full h-8.5 pl-8.5 pr-8 ti-well rounded text-xs font-sans text-[#181A1B] placeholder-[#8A8C8E] border border-[#C5C3BC] focus:outline-2 focus:outline-[#2C6E9B] focus:border-[#2C6E9B] transition-colors"
             />
-            <Search className="w-3.5 h-3.5 text-slate-500 absolute left-3 top-3 pointer-events-none" />
+            <Search className="w-3.5 h-3.5 text-[#7A7D80] absolute left-2.5 top-2.5 pointer-events-none" />
             {searchQuery && (
               <button
                 onClick={() => setSearchQuery('')}
-                className="absolute right-2.5 top-2.5 text-slate-500 hover:text-slate-300 cursor-pointer"
+                className="absolute right-2 top-2 text-[#7A7D80] hover:text-[#181A1B] cursor-pointer"
                 aria-label="Clear search"
               >
                 <X className="w-4 h-4" />
@@ -157,66 +106,141 @@ export const AssetListView: React.FC<AssetListViewProps> = ({
           </div>
         </div>
 
-        {/* Status Select & View Toggle */}
-        <div className="flex items-center gap-2 shrink-0">
+        {/* Filters Group: Category, Status, View Mode */}
+        <div className="flex items-center gap-2 shrink-0 flex-wrap">
+          {/* Category Dropdown */}
+          <select
+            value={selectedCategory}
+            onChange={(e) => setSelectedCategory(e.target.value)}
+            className="h-8.5 px-2.5 rounded ti-btn text-xs font-sans text-[#181A1B] border border-[#CFCDBF] focus:outline-2 focus:outline-[#2C6E9B] cursor-pointer"
+            aria-label="Filter by category"
+          >
+            {categories.map(cat => (
+              <option key={cat.value} value={cat.value}>
+                {cat.label} ({cat.count})
+              </option>
+            ))}
+          </select>
+
+          {/* Status Dropdown */}
           <select
             value={selectedStatus}
             onChange={(e) => setSelectedStatus(e.target.value)}
-            className="h-9 px-3 rounded-lg instrument-btn text-xs font-sans text-slate-200 border border-white/[0.08] focus:border-blue-500 focus:outline-none cursor-pointer"
-            aria-label="Filter by asset status"
+            className="h-8.5 px-2.5 rounded ti-btn text-xs font-sans text-[#181A1B] border border-[#CFCDBF] focus:outline-2 focus:outline-[#2C6E9B] cursor-pointer"
+            aria-label="Filter by status"
           >
             <option value="ALL">All Statuses ({assets.length})</option>
             <option value="In Stock">In Stock ({assets.filter(a => a.status === 'In Stock').length})</option>
             <option value="In Use">In Field Use ({assets.filter(a => a.status === 'In Use').length})</option>
-            <option value="Maintenance">Depot Maintenance ({assets.filter(a => a.status === 'Maintenance').length})</option>
+            <option value="Maintenance">Maintenance ({assets.filter(a => a.status === 'Maintenance').length})</option>
           </select>
 
           {/* View Mode Toggle */}
-          <div className="flex items-center p-0.5 rounded-lg instrument-well border border-white/[0.05]">
+          <div className="flex items-center p-0.5 rounded ti-well border border-[#C5C3BC]">
             <button
               onClick={() => { soundFx.playMechanicalClick(); setViewMode('grid'); }}
-              className={`p-1.5 rounded-md text-xs cursor-pointer transition-all ${
-                viewMode === 'grid' ? 'bg-[#202735] text-blue-300 shadow-xs' : 'text-slate-400 hover:text-slate-200'
+              className={`p-1 rounded text-xs cursor-pointer transition-all ${
+                viewMode === 'grid' ? 'bg-[#FAF9F5] text-[#C66A2B] shadow-xs font-medium' : 'text-[#686B6D] hover:text-[#181A1B]'
               }`}
-              title="Grid View"
-              aria-label="Switch to Grid View"
+              title="Fluid Grid View"
+              aria-label="Switch to Fluid Grid View"
             >
               <LayoutGrid className="w-3.5 h-3.5" />
             </button>
             <button
               onClick={() => { soundFx.playMechanicalClick(); setViewMode('table'); }}
-              className={`p-1.5 rounded-md text-xs cursor-pointer transition-all ${
-                viewMode === 'table' ? 'bg-[#202735] text-blue-300 shadow-xs' : 'text-slate-400 hover:text-slate-200'
+              className={`p-1 rounded text-xs cursor-pointer transition-all ${
+                viewMode === 'table' ? 'bg-[#FAF9F5] text-[#C66A2B] shadow-xs font-medium' : 'text-[#686B6D] hover:text-[#181A1B]'
               }`}
-              title="Dense Table View"
+              title="Full-Width Table View"
               aria-label="Switch to Table View"
             >
               <List className="w-3.5 h-3.5" />
             </button>
           </div>
+
+          {/* Quick Intake Button */}
+          <SkeuoButton
+            size="sm"
+            variant="standard"
+            onClick={onNewAssetClick}
+            icon={<Plus className="w-3.5 h-3.5 text-[#C66A2B]" />}
+          >
+            Add Hardware
+          </SkeuoButton>
         </div>
       </div>
 
-      {/* Grid Mode View */}
+      {/* Category Horizontal Quick Filters */}
+      <div className="flex items-center gap-1.5 overflow-x-auto pb-1 max-w-full text-xs">
+        {categories.map(cat => {
+          const isSelected = selectedCategory === cat.value;
+          return (
+            <button
+              key={cat.value}
+              onClick={() => {
+                soundFx.playMechanicalClick();
+                setSelectedCategory(cat.value);
+              }}
+              className={`px-2.5 py-1 rounded text-xs font-medium whitespace-nowrap transition-all cursor-pointer ${
+                isSelected
+                  ? 'bg-[#151719] text-[#FAF9F5] shadow-xs'
+                  : 'ti-btn text-[#505457] hover:text-[#181A1B]'
+              }`}
+            >
+              <span>{cat.label}</span>
+              <span className={`ml-1.5 text-[10px] px-1 py-0.2 rounded font-mono ${
+                isSelected ? 'bg-[#2E333A] text-[#C66A2B]' : 'text-[#7A7D80]'
+              }`}>
+                {cat.count}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Results Header Summary */}
+      <div className="flex items-center justify-between text-xs text-[#686B6D] px-1">
+        <span>
+          Showing <strong className="text-[#181A1B]">{filteredAssets.length}</strong> of {assets.length} devices
+        </span>
+        {(searchQuery || selectedCategory !== 'ALL' || selectedStatus !== 'ALL') && (
+          <button
+            onClick={handleResetFilters}
+            className="text-[#C66A2B] hover:underline font-medium cursor-pointer"
+          >
+            Reset Filters
+          </button>
+        )}
+      </div>
+
+      {/* Grid Mode View: Fluid Grid Adaptable from 3 (1280px) to 6 (ultrawide) */}
       {viewMode === 'grid' ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5">
-          {filteredAssets.length === 0 ? (
-            <div className="col-span-full p-12 text-center instrument-panel rounded-xl border border-white/[0.06]">
-              <div className="w-12 h-12 rounded-xl instrument-well mx-auto mb-3 flex items-center justify-center text-slate-500">
-                <Search className="w-6 h-6" />
-              </div>
-              <h3 className="text-sm font-sans font-semibold text-slate-200 mb-1">
-                No matching hardware found
-              </h3>
-              <p className="text-xs font-sans text-slate-400 max-w-sm mx-auto mb-4">
-                No equipment records matched &ldquo;{searchQuery || selectedCategory || selectedStatus}&rdquo;. Try adjusting search terms or resetting filters.
-              </p>
-              <SkeuoButton size="sm" variant="standard" onClick={handleResetFilters}>
-                Reset All Filters
-              </SkeuoButton>
+        filteredAssets.length === 0 ? (
+          <div className="p-12 text-center ti-surface rounded-lg border border-[#D8D6CF]">
+            <div className="w-10 h-10 rounded ti-well mx-auto mb-3 flex items-center justify-center text-[#7A7D80]">
+              <Search className="w-5 h-5" />
             </div>
-          ) : (
-            filteredAssets.map(asset => {
+            <h3 className="text-sm font-semibold text-[#181A1B] mb-1">
+              No matching hardware found
+            </h3>
+            <p className="text-xs text-[#686B6D] max-w-sm mx-auto mb-4">
+              No equipment records matched &ldquo;{searchQuery || selectedCategory || selectedStatus}&rdquo;. Adjust search keywords or reset active filters.
+            </p>
+            <SkeuoButton size="sm" variant="standard" onClick={handleResetFilters}>
+              Reset All Filters
+            </SkeuoButton>
+          </div>
+        ) : (
+          <div 
+            className="w-full"
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
+              gap: '14px'
+            }}
+          >
+            {filteredAssets.map(asset => {
               const isApple = asset.manufacturer.toLowerCase() === 'apple' || asset.appleCoverage !== undefined;
               return (
                 <div
@@ -225,7 +249,7 @@ export const AssetListView: React.FC<AssetListViewProps> = ({
                     soundFx.playMechanicalClick();
                     onSelectAsset(asset);
                   }}
-                  className="instrument-card rounded-xl p-4 cursor-pointer group flex flex-col justify-between"
+                  className="ti-card rounded-lg p-3.5 cursor-pointer flex flex-col justify-between group"
                   tabIndex={0}
                   role="button"
                   onKeyDown={(e) => {
@@ -236,169 +260,166 @@ export const AssetListView: React.FC<AssetListViewProps> = ({
                   }}
                 >
                   <div>
-                    {/* Header: Asset Tag & Status Badge */}
+                    {/* Header: Tag, Status & Category */}
                     <div className="flex items-center justify-between gap-2 mb-2">
-                      <span className="text-xs font-mono font-bold px-2 py-0.5 rounded bg-[#10141b] text-blue-300 border border-blue-600/30">
-                        {asset.assetTag}
-                      </span>
+                      <div className="flex items-center gap-1.5 min-w-0">
+                        <span className="font-mono text-xs font-bold px-1.5 py-0.5 rounded bg-[#E8E6DF] text-[#181A1B] border border-[#CFCDBF] tracking-tight">
+                          {asset.assetTag}
+                        </span>
+                        <span className="text-[11px] text-[#686B6D] truncate">
+                          {asset.category}
+                        </span>
+                      </div>
                       <StatusBadge status={asset.status} />
                     </div>
 
-                    {/* Dominant Scan Path: Equipment Name */}
-                    <h3 className="text-sm font-sans font-bold text-slate-100 group-hover:text-blue-300 transition-colors line-clamp-1">
-                      {asset.name}
-                    </h3>
-
-                    <div className="text-xs font-sans text-slate-400 mt-0.5">
-                      {asset.manufacturer} • {asset.model}
-                    </div>
-
-                    {/* Technical Identifiers (Strictly Monospace) */}
-                    <div className="grid grid-cols-2 gap-2 my-3 p-2 rounded-lg instrument-well text-[11px] font-mono border border-white/[0.04]">
-                      <div className="truncate">
-                        <span className="text-slate-500 block text-[9px] uppercase font-sans tracking-wide">SERIAL</span>
-                        <span className="text-slate-300 font-semibold truncate block">{asset.serialNumber}</span>
-                      </div>
-                      <div className="truncate text-right">
-                        <span className="text-slate-500 block text-[9px] uppercase font-sans tracking-wide">BARCODE</span>
-                        <span className="text-slate-400 truncate block">{asset.barcode}</span>
+                    {/* Hardware Name & Model */}
+                    <div className="mb-2.5">
+                      <h4 className="text-xs font-semibold text-[#181A1B] group-hover:text-[#C66A2B] transition-colors leading-tight line-clamp-1">
+                        {asset.name}
+                      </h4>
+                      <div className="text-[11px] text-[#686B6D] truncate mt-0.5 font-sans">
+                        {asset.model}
                       </div>
                     </div>
 
-                    {/* Custody Compartment */}
-                    <div className="p-2.5 rounded-lg instrument-well border border-white/[0.04] text-xs">
-                      {asset.assignedTo ? (
-                        <div className="flex items-center gap-2">
-                          <div className="w-6 h-6 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center shrink-0 text-blue-300">
-                            <User className="w-3 h-3" />
-                          </div>
-                          <div className="truncate">
-                            <div className="font-sans font-semibold text-slate-200 truncate">
+                    {/* Information-Dense Hardware Specs */}
+                    <div className="p-2 rounded ti-well mb-2.5 text-[11px] space-y-1">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-[#686B6D] flex items-center gap-1">
+                          <Cpu className="w-3 h-3 text-[#7A7D80]" /> CPU
+                        </span>
+                        <span className="font-mono text-[#181A1B] font-medium truncate max-w-[170px] text-right">
+                          {asset.specs.processor.split('(')[0].trim()}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-[#686B6D] flex items-center gap-1">
+                          <HardDrive className="w-3 h-3 text-[#7A7D80]" /> RAM / Disk
+                        </span>
+                        <span className="font-mono text-[#181A1B] font-medium text-right">
+                          {asset.specs.ram.split(' ')[0]} GB • {asset.specs.storage.split(' ')[0]} {asset.specs.storage.includes('TB') ? 'TB' : 'GB'}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Custody Assignment */}
+                    <div className="flex items-center gap-2 mb-2 text-xs">
+                      <div className="w-5 h-5 rounded-full bg-[#E5E3DD] border border-[#C7C5BE] flex items-center justify-center text-[#505457] shrink-0">
+                        <User className="w-3 h-3" />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        {asset.assignedTo ? (
+                          <div className="flex items-baseline justify-between gap-1">
+                            <span className="font-medium text-[#181A1B] truncate text-[11px]">
                               {asset.assignedTo.name}
-                            </div>
-                            <div className="text-[10px] text-slate-400 font-sans truncate">
-                              {asset.assignedTo.department} • Since {asset.assignedTo.assignedDate}
-                            </div>
+                            </span>
+                            <span className="text-[10px] text-[#686B6D] truncate">
+                              {asset.assignedTo.department}
+                            </span>
                           </div>
-                        </div>
-                      ) : (
-                        <div className="flex items-center gap-2 text-emerald-400 text-xs font-sans font-medium">
-                          <CheckCircle2 className="w-3.5 h-3.5" />
-                          <span>Available in Depot ({asset.location})</span>
-                        </div>
-                      )}
+                        ) : (
+                          <span className="text-[11px] text-[#0F682C] font-medium">
+                            Unassigned • In Depot
+                          </span>
+                        )}
+                      </div>
                     </div>
                   </div>
 
-                  {/* Card Footer: Warranty / Specs Summary & Inspect Trigger */}
-                  <div className="mt-3 pt-2.5 border-t border-white/[0.06] flex items-center justify-between text-[11px]">
-                    {isApple ? (
-                      <span className="text-blue-300 font-sans flex items-center gap-1 font-medium">
-                        <ShieldCheck className="w-3.5 h-3.5 text-blue-400" />
-                        {asset.appleCoverage?.warrantyStatus || 'AppleCare+'}
-                      </span>
-                    ) : (
-                      <span className="text-slate-400 font-sans truncate max-w-[160px]">
-                        {asset.specs.processor.split('(')[0].trim()}
-                      </span>
-                    )}
+                  {/* Card Footer: Serial, Warranty Indicator & Inspector Arrow */}
+                  <div className="pt-2 border-t border-[#E8E6DF] flex items-center justify-between text-[11px] mt-1 text-[#686B6D]">
+                    <div className="flex items-center gap-1.5 font-mono text-[10px] truncate max-w-[180px]">
+                      <Tag className="w-3 h-3 text-[#8A8C8E]" />
+                      <span className="truncate">{asset.serialNumber}</span>
+                    </div>
 
-                    <span className="text-xs text-slate-400 group-hover:text-white font-sans flex items-center gap-1 transition-colors">
-                      Inspect <ArrowRight className="w-3 h-3" />
-                    </span>
+                    <div className="flex items-center gap-1 text-[#C66A2B] font-sans text-xs font-medium group-hover:translate-x-0.5 transition-transform">
+                      <span>Inspect</span>
+                      <ArrowRight className="w-3 h-3" />
+                    </div>
                   </div>
                 </div>
               );
-            })
-          )}
-        </div>
+            })}
+          </div>
+        )
       ) : (
-        /* Table Mode View */
-        <div className="instrument-panel rounded-xl border border-white/[0.07] overflow-x-auto shadow-md">
-          <table className="w-full text-left text-xs font-sans">
-            <thead className="bg-[#12151b] text-slate-400 uppercase text-[10px] tracking-wider border-b border-white/[0.07]">
-              <tr>
-                <th className="p-3">Asset Tag</th>
-                <th className="p-3">Equipment</th>
-                <th className="p-3 font-mono">Serial / Barcode</th>
-                <th className="p-3">Category</th>
-                <th className="p-3">Status</th>
-                <th className="p-3">Current Custody</th>
-                <th className="p-3">Warranty</th>
-                <th className="p-3 text-right">Action</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-white/[0.04] text-slate-200">
-              {filteredAssets.length === 0 ? (
-                <tr>
-                  <td colSpan={8} className="p-8 text-center text-slate-400">
-                    No matching equipment records found.
-                  </td>
+        /* Full-Width High-Density Table View */
+        <div className="ti-surface rounded-lg overflow-hidden border border-[#D8D6CF]">
+          <div className="overflow-x-auto w-full">
+            <table className="w-full text-left text-xs border-collapse">
+              <thead>
+                <tr className="border-b border-[#D8D6CF] bg-[#EAE8E2] text-[#686B6D] font-medium text-[11px]">
+                  <th className="py-2.5 px-3 whitespace-nowrap">Asset Tag</th>
+                  <th className="py-2.5 px-3">Equipment / Model</th>
+                  <th className="py-2.5 px-3">Category</th>
+                  <th className="py-2.5 px-3">Status</th>
+                  <th className="py-2.5 px-3">Specs (CPU / RAM / Disk)</th>
+                  <th className="py-2.5 px-3">Custodian</th>
+                  <th className="py-2.5 px-3">Serial / Barcode</th>
+                  <th className="py-2.5 px-3 text-right">Action</th>
                 </tr>
-              ) : (
-                filteredAssets.map(asset => (
-                  <tr 
-                    key={asset.id} 
+              </thead>
+              <tbody className="divide-y divide-[#E6E4DE] text-[#181A1B]">
+                {filteredAssets.map(asset => (
+                  <tr
+                    key={asset.id}
                     onClick={() => {
                       soundFx.playMechanicalClick();
                       onSelectAsset(asset);
                     }}
-                    className="hover:bg-[#1c222c] cursor-pointer transition-colors"
+                    className="hover:bg-[#FAF9F5] transition-colors cursor-pointer"
                   >
-                    <td className="p-3 font-mono font-bold text-blue-300 whitespace-nowrap">
-                      {asset.assetTag}
+                    <td className="py-2.5 px-3 font-mono font-bold text-xs whitespace-nowrap">
+                      <span className="px-1.5 py-0.5 rounded bg-[#E5E3DC] text-[#181A1B] border border-[#C7C5BE]">
+                        {asset.assetTag}
+                      </span>
                     </td>
-                    <td className="p-3 font-semibold text-slate-100 whitespace-nowrap">
-                      <div>{asset.name}</div>
-                      <div className="text-[10px] text-slate-400 font-normal">{asset.manufacturer} {asset.model}</div>
+                    <td className="py-2.5 px-3 max-w-[200px]">
+                      <div className="font-semibold text-[#181A1B] truncate">{asset.name}</div>
+                      <div className="text-[11px] text-[#686B6D] truncate">{asset.model}</div>
                     </td>
-                    <td className="p-3 font-mono text-slate-300 whitespace-nowrap">
-                      <div>{asset.serialNumber}</div>
-                      <div className="text-[10px] text-slate-500">{asset.barcode}</div>
-                    </td>
-                    <td className="p-3 text-slate-400 whitespace-nowrap">
+                    <td className="py-2.5 px-3 text-[#505457] whitespace-nowrap">
                       {asset.category}
                     </td>
-                    <td className="p-3 whitespace-nowrap">
+                    <td className="py-2.5 px-3 whitespace-nowrap">
                       <StatusBadge status={asset.status} />
                     </td>
-                    <td className="p-3 whitespace-nowrap">
+                    <td className="py-2.5 px-3 font-mono text-[11px] text-[#505457] max-w-[180px] truncate">
+                      {asset.specs.processor.split('(')[0].trim()} • {asset.specs.ram.split(' ')[0]}GB
+                    </td>
+                    <td className="py-2.5 px-3 text-xs whitespace-nowrap">
                       {asset.assignedTo ? (
                         <div>
-                          <span className="font-semibold text-slate-200">{asset.assignedTo.name}</span>
-                          <span className="text-[10px] text-slate-400 block">{asset.assignedTo.department}</span>
+                          <div className="font-medium text-[#181A1B]">{asset.assignedTo.name}</div>
+                          <div className="text-[10px] text-[#686B6D]">{asset.assignedTo.department}</div>
                         </div>
                       ) : (
-                        <span className="text-emerald-400 font-medium">Depot Pool</span>
+                        <span className="text-[#0F682C] font-medium text-[11px]">In Depot</span>
                       )}
                     </td>
-                    <td className="p-3 whitespace-nowrap">
-                      {asset.appleCoverage ? (
-                        <span className="text-blue-300 flex items-center gap-1 font-medium">
-                          <ShieldCheck className="w-3 h-3 text-blue-400" />
-                          {asset.appleCoverage.warrantyStatus}
-                        </span>
-                      ) : (
-                        <span className="text-slate-400 font-mono text-[11px]">{asset.warrantyExpiry}</span>
-                      )}
+                    <td className="py-2.5 px-3 font-mono text-[11px] text-[#686B6D] whitespace-nowrap">
+                      <div>{asset.serialNumber}</div>
+                      <div className="text-[10px] text-[#8A8C8E]">{asset.barcode}</div>
                     </td>
-                    <td className="p-3 text-right whitespace-nowrap">
-                      <SkeuoButton 
-                        size="sm" 
-                        variant="subtle"
-                        onClick={(e) => { 
-                          e.stopPropagation(); 
-                          onSelectAsset(asset); 
+                    <td className="py-2.5 px-3 text-right whitespace-nowrap">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          soundFx.playMechanicalClick();
+                          onSelectAsset(asset);
                         }}
+                        className="px-2 py-1 rounded ti-btn text-xs font-medium text-[#C66A2B] hover:text-[#B55E22] inline-flex items-center gap-1 cursor-pointer"
                       >
-                        Inspect
-                      </SkeuoButton>
+                        Inspect <ArrowRight className="w-3 h-3" />
+                      </button>
                     </td>
                   </tr>
-                ))
-              )}
-            </tbody>
-          </table>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
     </div>

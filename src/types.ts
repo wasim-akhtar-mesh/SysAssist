@@ -96,10 +96,11 @@ export interface Asset {
 }
 
 export interface JiraTicket {
+  id?: string;
   key: string; // e.g. "SYS-1048"
   summary: string;
   description: string;
-  issueType: 'Hardware Request' | 'Defect / Repair' | 'Decommission' | 'New Hire Provisioning';
+  issueType?: 'Hardware Request' | 'Defect / Repair' | 'Decommission' | 'New Hire Provisioning';
   status: 'Open' | 'In Progress' | 'Awaiting Hardware' | 'Fulfilled' | 'Closed';
   priority: 'Highest' | 'High' | 'Medium' | 'Low';
   requester: {
@@ -107,10 +108,13 @@ export interface JiraTicket {
     email: string;
     department: string;
   };
-  requestedEquipment: string;
-  createdAt: string;
-  updatedAt: string;
+  requestedEquipment?: string;
+  requestedHardware?: string;
+  createdAt?: string;
+  createdDate?: string;
+  updatedAt?: string;
   linkedAssetTag?: string;
+  fulfilledAssetTag?: string;
 }
 
 export interface InventoryThreshold {

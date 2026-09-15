@@ -7,7 +7,8 @@ import {
 } from './types';
 import { INITIAL_ASSETS, INITIAL_CHANGE_LOGS } from './data/mockAssets';
 import { INITIAL_JIRA_TICKETS, INVENTORY_THRESHOLDS } from './data/mockJira';
-import { HeaderBar } from './components/HeaderBar';
+import { NavigationRail, ActiveTab } from './components/NavigationRail';
+import { UtilityBar } from './components/UtilityBar';
 import { AssetListView } from './components/AssetListView';
 import { AutomatedInventoryTracker } from './components/AutomatedInventoryTracker';
 import { JiraTicketingDrawer } from './components/JiraTicketingDrawer';
@@ -55,7 +56,6 @@ export default function App() {
     } catch {
       // fallback
     }
-    // Combine logs from all initial assets and initial logs
     const aggregated = [...INITIAL_CHANGE_LOGS];
     INITIAL_ASSETS.forEach(a => {
       a.changeLogs.forEach(l => {
@@ -93,15 +93,29 @@ export default function App() {
   }, [allChangeLogs]);
 
   // UI state
-  const [activeTab, setActiveTab] = useState<'inventory' | 'stock_tracker' | 'jira' | 'audit_trail'>('inventory');
+  const [activeTab, setActiveTab] = useState<ActiveTab>('inventory');
   const [selectedAsset, setSelectedAsset] = useState<Asset | null>(null);
   const [isScannerOpen, setIsScannerOpen] = useState<boolean>(false);
   const [isAddAssetOpen, setIsAddAssetOpen] = useState<boolean>(false);
   const [scannerInitialBarcode, setScannerInitialBarcode] = useState<string>('');
+  
+  // Responsive navigation state
+  const [isRailCollapsed, setIsRailCollapsed] = useState<boolean>(false);
+  const [isMobileRailOpen, setIsMobileRailOpen] = useState<boolean>(false);
+  const [soundEnabled, setSoundEnabled] = useState<boolean>(true);
+
+  const toggleSound = () => {
+    const next = !soundEnabled;
+    soundFx.soundEnabled = next;
+    setSoundEnabled(next);
+    if (next) {
+      soundFx.playMechanicalClick();
+    }
+  };
 
   // Count metrics
   const openJiraCount = jiraTickets.filter(t => t.status !== 'Fulfilled').length;
-  const lowStockCount = assets.filter(a => a.status === 'In Stock' && a.category === 'Dock').length <= 1 ? 1 : 0;
+  const lowStockCount = assets.filter(a => a.status === 'In Stock' && (a.category === 'Dock' || a.category === 'Display')).length <= 2 ? 1 : 0;
 
   // Handlers
   const handleUpdateAsset = (updatedAsset: Asset, newLog: ChangeLogEntry) => {
@@ -116,7 +130,7 @@ export default function App() {
     setSelectedAsset(newAsset);
   };
 
-  const handleAddJiraTicket = (ticket: JiraTicket) => {
+  const handleCreateJiraTicket = (ticket: JiraTicket) => {
     setJiraTickets(prev => [ticket, ...prev]);
   };
 
@@ -150,8 +164,7 @@ export default function App() {
         return {
           ...t,
           status: 'Fulfilled',
-          linkedAssetTag: log.assetTag,
-          updatedAt: new Date().toISOString()
+          fulfilledAssetTag: log.assetTag
         };
       }
       return t;
@@ -161,25 +174,26 @@ export default function App() {
   };
 
   const handleDraftProcurementTicket = (item: { category: string; modelName: string; quantityToOrder: number }) => {
-    const newKey = `SYS-${Math.floor(1090 + Math.random() * 50)}`;
-    const ticket: JiraTicket = {
-      key: newKey,
-      summary: `Automated Procurement PO: Restock ${item.quantityToOrder}x ${item.modelName}`,
-      description: `Automated inventory alert triggered by SysAssist buffer threshold. Category ${item.category} has reached critical minimum reserves. Please generate purchase order and dispatch to preferred enterprise supplier.`,
+    const nextKey = `SYS-${1085 + jiraTickets.length}`;
+    const now = new Date().toISOString();
+    const newTicket: JiraTicket = {
+      key: nextKey,
+      summary: `Automated PO: Restock ${item.quantityToOrder}x ${item.modelName}`,
+      description: `Automated inventory alert triggered by SysAssist buffer quota. Category ${item.category} has reached critical minimum reserves. Please generate purchase order and dispatch to preferred enterprise supplier.`,
       issueType: 'Hardware Request',
       status: 'Open',
       priority: 'High',
+      createdAt: now,
+      updatedAt: now,
       requester: {
         name: CURRENT_USER,
-        email: 'wasim.akhtar@meshconnect.com',
-        department: 'IT Infrastructure & Operations'
+        email: 'wasim.akhtar@meshconnect.internal',
+        department: 'Hardware Operations'
       },
-      requestedEquipment: `${item.quantityToOrder}x ${item.modelName}`,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
+      requestedEquipment: `${item.quantityToOrder}x ${item.modelName}`
     };
 
-    setJiraTickets(prev => [ticket, ...prev]);
+    setJiraTickets(prev => [newTicket, ...prev]);
     setActiveTab('jira');
     soundFx.playReassignSuccess();
   };
@@ -197,63 +211,96 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-[#0d0f12] text-slate-100 flex flex-col selection:bg-blue-600 selection:text-white">
+    <div className="flex h-screen w-screen overflow-hidden bg-[#D8D7D2] text-[#181A1B] font-sans antialiased select-auto selection:bg-[#C66A2B] selection:text-white">
       
-      {/* Header Bar */}
-      <HeaderBar
+      {/* 1. Left Navigation Rail (Desktop Fixed/Collapsible & Mobile Drawer) */}
+      <NavigationRail
         activeTab={activeTab}
         onSelectTab={setActiveTab}
         onOpenScanner={() => setIsScannerOpen(true)}
+        onOpenAddAsset={() => {
+          setScannerInitialBarcode('');
+          setIsAddAssetOpen(true);
+        }}
         openJiraCount={openJiraCount}
         lowStockCount={lowStockCount}
         totalAssetsCount={assets.length}
         currentUser={CURRENT_USER}
+        isCollapsed={isRailCollapsed}
+        onToggleCollapse={() => setIsRailCollapsed(!isRailCollapsed)}
+        soundEnabled={soundEnabled}
+        onToggleSound={toggleSound}
+        isMobileOpen={isMobileRailOpen}
+        onCloseMobile={() => setIsMobileRailOpen(false)}
       />
 
-      {/* Main Structural Bay */}
-      <main className="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6">
-        {activeTab === 'inventory' && (
-          <AssetListView
-            assets={assets}
-            onSelectAsset={(asset) => setSelectedAsset(asset)}
-            onOpenScanner={() => setIsScannerOpen(true)}
-            onNewAssetClick={() => {
-              setScannerInitialBarcode('');
-              setIsAddAssetOpen(true);
-            }}
-          />
-        )}
+      {/* 2. Main Workspace Area (Utility Bar + Dynamic Full-Viewport Canvas) */}
+      <div className="flex-1 flex flex-col min-w-0 h-screen overflow-hidden bg-[#D8D7D2]">
+        
+        {/* Compact Utility Bar across Top */}
+        <UtilityBar
+          activeTab={activeTab}
+          onOpenMobileMenu={() => setIsMobileRailOpen(true)}
+          onOpenScanner={() => setIsScannerOpen(true)}
+          onOpenAddAsset={() => {
+            setScannerInitialBarcode('');
+            setIsAddAssetOpen(true);
+          }}
+          totalAssetsCount={assets.length}
+          openJiraCount={openJiraCount}
+          lowStockCount={lowStockCount}
+          currentUser={CURRENT_USER}
+        />
 
-        {activeTab === 'stock_tracker' && (
-          <AutomatedInventoryTracker
-            assets={assets}
-            thresholds={INVENTORY_THRESHOLDS}
-            onDraftProcurementTicket={handleDraftProcurementTicket}
-            onOpenAssetDetail={(asset) => setSelectedAsset(asset)}
-          />
-        )}
+        {/* Scrollable Main Workspace Content (Uses all remaining space; max-w-[2200px] only on ultrawide) */}
+        <main className="flex-1 overflow-y-auto px-3.5 sm:px-6 py-3.5 sm:py-5 w-full max-w-[2200px]">
+          
+          {/* TAB 1: INVENTORY BAY */}
+          {activeTab === 'inventory' && (
+            <AssetListView
+              assets={assets}
+              onSelectAsset={(asset) => setSelectedAsset(asset)}
+              onOpenScanner={() => setIsScannerOpen(true)}
+              onNewAssetClick={() => {
+                setScannerInitialBarcode('');
+                setIsAddAssetOpen(true);
+              }}
+            />
+          )}
 
-        {activeTab === 'jira' && (
-          <JiraTicketingDrawer
-            isOpen={true}
-            onClose={() => setActiveTab('inventory')}
-            tickets={jiraTickets}
-            assets={assets}
-            onAddTicket={handleAddJiraTicket}
-            onFulfillTicket={handleFulfillJiraTicket}
-            currentUser={CURRENT_USER}
-          />
-        )}
+          {/* TAB 2: STOCK RESERVES */}
+          {activeTab === 'stock_tracker' && (
+            <AutomatedInventoryTracker
+              assets={assets}
+              thresholds={INVENTORY_THRESHOLDS}
+              onDraftProcurementTicket={handleDraftProcurementTicket}
+              onOpenAssetDetail={(asset) => setSelectedAsset(asset)}
+            />
+          )}
 
-        {activeTab === 'audit_trail' && (
-          <AuditTrailView
-            changeLogs={allChangeLogs}
-            onSelectAssetByTag={handleSelectAssetByTag}
-          />
-        )}
-      </main>
+          {/* TAB 3: JIRA CLOUD DESK */}
+          {activeTab === 'jira' && (
+            <JiraTicketingDrawer
+              tickets={jiraTickets}
+              assets={assets}
+              onCreateTicket={handleCreateJiraTicket}
+              onFulfillTicket={handleFulfillJiraTicket}
+              currentUser={CURRENT_USER}
+              onSelectAssetByTag={handleSelectAssetByTag}
+            />
+          )}
 
-      {/* Modal 1: Asset Details & Reassignment Drawer */}
+          {/* TAB 4: AUDIT TRAIL */}
+          {activeTab === 'audit_trail' && (
+            <AuditTrailView
+              changeLogs={allChangeLogs}
+              onSelectAssetByTag={handleSelectAssetByTag}
+            />
+          )}
+        </main>
+      </div>
+
+      {/* MODAL 1: Asset Inspector Drawer (Right-side drawer on desktop, sheet on mobile) */}
       {selectedAsset && (
         <AssetDetailModal
           asset={selectedAsset}
@@ -265,7 +312,7 @@ export default function App() {
         />
       )}
 
-      {/* Modal 2: Barcode Scanner */}
+      {/* MODAL 2: Barcode & Serial Scanner (Centered focused dialog) */}
       <BarcodeScannerModal
         isOpen={isScannerOpen}
         onClose={() => setIsScannerOpen(false)}
@@ -274,7 +321,7 @@ export default function App() {
         onNewAssetScan={handleNewAssetFromScan}
       />
 
-      {/* Modal 3: Provision New Hardware Asset */}
+      {/* MODAL 3: Hardware Intake Dialog (Centered focused dialog) */}
       <AddAssetModal
         isOpen={isAddAssetOpen}
         onClose={() => setIsAddAssetOpen(false)}
@@ -282,20 +329,6 @@ export default function App() {
         initialBarcode={scannerInitialBarcode}
         currentUser={CURRENT_USER}
       />
-
-      {/* Precision Instrument Chassis Status Footer */}
-      <footer className="bg-[#101318] py-3 px-6 border-t border-white/[0.06] text-center text-xs font-sans text-slate-400 flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-2">
-          <span className="w-2 h-2 rounded-full bg-emerald-400" />
-          <span>SysAssist Core Engine: <strong className="text-slate-200">Online</strong></span>
-        </div>
-        <div>
-          <span>Enterprise Asset Management System</span>
-        </div>
-        <div className="text-[11px] text-slate-500 font-mono">
-          <span>Barcode Recognition • Apple GSX Service • Jira Cloud Sandbox</span>
-        </div>
-      </footer>
 
     </div>
   );

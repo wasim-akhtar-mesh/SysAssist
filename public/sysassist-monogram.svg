@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none">
+  <!-- SysAssist Precision Instrument Monogram: Titanium & Ink Palette -->
+  <!-- Rounded Instrument Bezel (Graphite #151719) -->
+  <rect x="1" y="1" width="30" height="30" rx="6" fill="#151719" stroke="#2A2E33" stroke-width="1.5" />
+  <rect x="2.5" y="2.5" width="27" height="27" rx="4.5" fill="none" stroke="#373D44" stroke-width="0.75" />
+  
+  <!-- Architectural 'S' Asset Tag & Node Trace (Restrained Burnt Orange #C66A2B) -->
+  <!-- Upper Tag Terminal with Chamfered Entry -->
+  <path d="M10 9.5H20C21.933 9.5 23.5 11.067 23.5 13V13.5C23.5 15.157 22.157 16.5 20.5 16.5H14.5C13.119 16.5 12 17.619 12 19V19.5" 
+        stroke="#C66A2B" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" />
+  
+  <!-- Lower Return Bracket Node -->
+  <path d="M18.5 12.5V13C18.5 14.381 17.381 15.5 16 15.5H11.5C9.843 15.5 8.5 16.843 8.5 18.5V19C8.5 20.933 10.067 22.5 12 22.5H22" 
+        stroke="#C66A2B" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" />
+  
+  <!-- Precision Tag Aperture Pin (Bead-blasted Titanium Silver #E2E0D8) -->
+  <circle cx="12" cy="12" r="1.75" fill="#FAF9F5" />
+  <circle cx="20" cy="20" r="1.75" fill="#FAF9F5" />
+</svg>

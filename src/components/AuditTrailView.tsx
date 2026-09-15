@@ -6,10 +6,14 @@ import {
   UserCheck, 
   Tag, 
   FileSpreadsheet,
-  ArrowRight
+  ArrowRight,
+  Filter,
+  User,
+  ShieldCheck,
+  RotateCcw
 } from 'lucide-react';
 import { ChangeLogEntry } from '../types';
-import { SkeuoButton, SegmentedDisplay } from './SkeuoComponents';
+import { SkeuoButton, SegmentedDisplay, StatusBadge } from './SkeuoComponents';
 import { soundFx } from '../services/audioService';
 
 interface AuditTrailViewProps {
@@ -73,171 +77,150 @@ export const AuditTrailView: React.FC<AuditTrailViewProps> = ({
   const reassignmentCount = changeLogs.filter(l => l.action === 'REASSIGN').length;
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3.5">
       {/* Top Metric Strip */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <div className="instrument-panel p-3.5 rounded-xl">
-          <SegmentedDisplay value={changeLogs.length} label="Audit Events Logged" color="sky" />
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5">
+        <div className="ti-surface p-3 rounded-lg border border-[#D8D6CF]">
+          <SegmentedDisplay value={changeLogs.length} label="Audit Events Logged" color="neutral" />
         </div>
-        <div className="instrument-panel p-3.5 rounded-xl">
+        <div className="ti-surface p-3 rounded-lg border border-[#D8D6CF]">
           <SegmentedDisplay value={reassignmentCount} label="Custodian Reassignments" color="emerald" />
         </div>
-        <div className="instrument-panel p-3.5 rounded-xl">
+        <div className="ti-surface p-3 rounded-lg border border-[#D8D6CF]">
           <SegmentedDisplay 
             value={new Set(changeLogs.map(l => l.assetTag)).size} 
             label="Audited Hardware Units" 
             color="amber" 
           />
         </div>
-        <div className="instrument-panel p-3.5 rounded-xl">
+        <div className="ti-surface p-3 rounded-lg border border-[#D8D6CF]">
           <SegmentedDisplay 
             value={changeLogs.filter(l => l.jiraTicketKey).length} 
             label="Jira Linked Events" 
-            color="sky" 
+            color="blue" 
           />
         </div>
       </div>
 
-      {/* Search & Filter Bar */}
-      <div className="instrument-panel rounded-xl p-3.5 flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-2 flex-1 min-w-[240px]">
+      {/* Filter and Export Toolbar */}
+      <div className="p-2.5 rounded-lg ti-surface flex flex-wrap items-center justify-between gap-2.5 border border-[#D8D6CF]">
+        <div className="flex items-center gap-2 flex-1 min-w-[240px] sm:min-w-[320px]">
           <div className="relative w-full">
             <input
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search audit trail by Custodian, Tag (AST-8821), or Property..."
-              className="w-full h-9 pl-9 pr-4 instrument-well rounded-lg text-xs font-sans text-slate-100 placeholder-slate-500 border border-white/[0.06] focus:border-blue-500 focus:outline-none"
+              placeholder="Search audit trail (e.g. John, Sina, AST-8821, SYS-1082)..."
+              className="w-full h-8.5 pl-8.5 pr-3 ti-well rounded text-xs text-[#181A1B] placeholder-[#8A8C8E] border border-[#C5C3BC] focus:outline-2 focus:outline-[#2C6E9B]"
             />
-            <Search className="w-3.5 h-3.5 text-slate-500 absolute left-3 top-3 pointer-events-none" />
+            <Search className="w-3.5 h-3.5 text-[#7A7D80] absolute left-2.5 top-2.5 pointer-events-none" />
           </div>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2">
-          {/* Action Filter */}
+        <div className="flex items-center gap-2 shrink-0">
           <select
             value={selectedAction}
             onChange={(e) => setSelectedAction(e.target.value)}
-            className="h-9 px-3 instrument-btn rounded-lg text-xs font-sans text-slate-200 border border-white/[0.08] focus:border-blue-500 focus:outline-none cursor-pointer"
-            aria-label="Filter by audit action"
+            className="h-8.5 px-2.5 rounded ti-btn text-xs text-[#181A1B] border border-[#CFCDBF] focus:outline-2 focus:outline-[#2C6E9B] cursor-pointer"
           >
-            <option value="ALL">All Event Types</option>
-            <option value="REASSIGN">Reassignments</option>
-            <option value="STATUS_CHANGE">Status Changes</option>
-            <option value="WARRANTY_SYNC">Warranty Synced</option>
-            <option value="CHECK_IN">Check-ins</option>
-            <option value="CREATED">Intake / Created</option>
-          </select>
-
-          {/* Property Filter */}
-          <select
-            value={selectedProperty}
-            onChange={(e) => setSelectedProperty(e.target.value)}
-            className="h-9 px-3 instrument-btn rounded-lg text-xs font-sans text-slate-200 border border-white/[0.08] focus:border-blue-500 focus:outline-none cursor-pointer"
-            aria-label="Filter by changed property"
-          >
-            <option value="ALL">All Properties</option>
-            <option value="Assigned To">Assigned To</option>
-            <option value="Status">Status</option>
-            <option value="Apple Coverage">Apple Coverage / Specs</option>
-            <option value="Location">Location</option>
+            <option value="ALL">All Actions</option>
+            <option value="REASSIGN">REASSIGN</option>
+            <option value="CHECK_IN">CHECK_IN</option>
+            <option value="WARRANTY_SYNC">WARRANTY_SYNC</option>
+            <option value="INTAKE">INTAKE</option>
           </select>
 
           <SkeuoButton
             size="sm"
             variant="standard"
             onClick={handleExportCSV}
-            icon={<FileSpreadsheet className="w-3.5 h-3.5" />}
+            icon={<FileSpreadsheet className="w-3.5 h-3.5 text-[#0F682C]" />}
           >
             Export CSV
           </SkeuoButton>
         </div>
       </div>
 
-      {/* Audit Log Timeline Entries */}
-      <div className="space-y-2.5">
-        {filteredLogs.length === 0 ? (
-          <div className="p-12 text-center instrument-panel rounded-xl text-xs font-sans text-slate-400">
-            No audit log entries found matching criteria &ldquo;{searchQuery}&rdquo;.
-          </div>
-        ) : (
-          filteredLogs.map(log => (
-            <div
-              key={log.id}
-              className="instrument-card rounded-xl p-4 flex flex-col gap-2.5"
-            >
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <div className="flex flex-wrap items-center gap-2">
-                  <button
-                    onClick={() => onSelectAssetByTag?.(log.assetTag)}
-                    className="text-xs font-mono font-bold px-2 py-0.5 rounded bg-[#10141b] text-blue-300 border border-blue-600/30 hover:bg-blue-900/40 transition-all cursor-pointer"
-                    title="Inspect asset details"
-                  >
-                    {log.assetTag}
-                  </button>
-                  <span className="text-xs font-sans font-semibold text-slate-100">
-                    {log.assetName}
-                  </span>
-                  <span className="text-[10px] font-sans px-2 py-0.5 rounded bg-slate-800 text-slate-300 uppercase font-medium">
-                    {log.action}
-                  </span>
-                </div>
-
-                <div className="flex items-center gap-1.5 text-xs font-sans text-slate-400">
-                  <Clock className="w-3.5 h-3.5 text-slate-500" />
-                  <span>{new Date(log.timestamp).toLocaleString()}</span>
-                </div>
-              </div>
-
-              {/* Property & Difference Diff Box */}
-              <div className="instrument-well p-3 rounded-lg text-xs font-sans">
-                <div className="text-[11px] text-slate-400 mb-2 flex items-center gap-1.5">
-                  <span>Modified Property:</span>
-                  <strong className="text-amber-300 font-semibold bg-amber-950/40 px-1.5 py-0.2 rounded border border-amber-600/30">
-                    {log.property}
-                  </strong>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t border-white/[0.04]">
-                  <div>
-                    <span className="text-slate-500 block text-[10px] uppercase font-sans font-medium tracking-wide">Previous Value:</span>
-                    <span className="text-rose-300 line-through break-words block font-mono text-xs">
+      {/* Dense Full-Width Audit Table */}
+      <div className="ti-surface rounded-lg border border-[#D8D6CF] overflow-hidden">
+        <div className="overflow-x-auto w-full">
+          <table className="w-full text-left text-xs border-collapse">
+            <thead>
+              <tr className="border-b border-[#D8D6CF] bg-[#EAE8E2] text-[#686B6D] font-medium text-[11px]">
+                <th className="py-2.5 px-3 whitespace-nowrap">Timestamp</th>
+                <th className="py-2.5 px-3">Asset Tag</th>
+                <th className="py-2.5 px-3">Action</th>
+                <th className="py-2.5 px-3">Property Modified</th>
+                <th className="py-2.5 px-3">Previous State</th>
+                <th className="py-2.5 px-3">New State</th>
+                <th className="py-2.5 px-3">Operator</th>
+                <th className="py-2.5 px-3">Justification</th>
+                <th className="py-2.5 px-3 text-right">Jira Ref</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-[#EAE8E2] text-[#181A1B]">
+              {filteredLogs.length === 0 ? (
+                <tr>
+                  <td colSpan={9} className="py-8 text-center text-[#686B6D]">
+                    No audit records match the current filter query.
+                  </td>
+                </tr>
+              ) : (
+                filteredLogs.map(log => (
+                  <tr key={log.id} className="hover:bg-[#FAF9F5] transition-colors">
+                    <td className="py-2 px-3 font-mono text-[11px] text-[#686B6D] whitespace-nowrap">
+                      {new Date(log.timestamp).toLocaleString()}
+                    </td>
+                    <td className="py-2 px-3 whitespace-nowrap">
+                      <button
+                        onClick={() => onSelectAssetByTag?.(log.assetTag)}
+                        className="font-mono text-xs font-bold px-1.5 py-0.5 rounded bg-[#E5E3DD] text-[#181A1B] border border-[#C5C3BC] hover:border-[#C66A2B] cursor-pointer"
+                        title="Click to view asset"
+                      >
+                        {log.assetTag}
+                      </button>
+                    </td>
+                    <td className="py-2 px-3 whitespace-nowrap">
+                      <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${
+                        log.action === 'REASSIGN' 
+                          ? 'bg-[#EEF4FB] text-[#1956A6] border border-[#BCD4F3]'
+                          : log.action === 'WARRANTY_SYNC'
+                          ? 'bg-[#EBF7EE] text-[#0F682C] border border-[#B7E5C3]'
+                          : 'bg-[#FAF9F5] text-[#505457] border border-[#D8D6CF]'
+                      }`}>
+                        {log.action}
+                      </span>
+                    </td>
+                    <td className="py-2 px-3 font-medium text-[#181A1B] whitespace-nowrap">
+                      {log.property}
+                    </td>
+                    <td className="py-2 px-3 font-mono text-[11px] text-[#A81F1A] max-w-[150px] truncate" title={log.oldValue}>
                       {log.oldValue}
-                    </span>
-                  </div>
-
-                  <div>
-                    <span className="text-slate-500 block text-[10px] uppercase font-sans font-medium tracking-wide">Updated Value:</span>
-                    <span className="text-emerald-400 font-semibold break-words block font-mono text-xs">
+                    </td>
+                    <td className="py-2 px-3 font-mono text-[11px] text-[#0F682C] font-semibold max-w-[150px] truncate" title={log.newValue}>
                       {log.newValue}
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Footer: Performed by, Reason, Jira Key */}
-              <div className="flex flex-wrap items-center justify-between gap-2 pt-1 text-xs font-sans text-slate-400">
-                <div className="flex items-center gap-1.5">
-                  <UserCheck className="w-3.5 h-3.5 text-blue-400" />
-                  <span>Operator: <strong className="text-slate-200">{log.performedBy}</strong></span>
-                </div>
-
-                {log.reason && (
-                  <div className="text-slate-300 italic text-[11px]">
-                    &ldquo;{log.reason}&rdquo;
-                  </div>
-                )}
-
-                {log.jiraTicketKey && (
-                  <div className="flex items-center gap-1 px-2 py-0.5 rounded bg-blue-950/80 border border-blue-700/40 text-blue-300 text-[11px] font-medium font-mono">
-                    <Tag className="w-3 h-3" />
-                    <span>Jira: {log.jiraTicketKey}</span>
-                  </div>
-                )}
-              </div>
-            </div>
-          ))
-        )}
+                    </td>
+                    <td className="py-2 px-3 text-[#505457] whitespace-nowrap">
+                      {log.performedBy}
+                    </td>
+                    <td className="py-2 px-3 text-[#686B6D] text-[11px] max-w-[180px] truncate" title={log.reason || ''}>
+                      {log.reason || '—'}
+                    </td>
+                    <td className="py-2 px-3 text-right whitespace-nowrap">
+                      {log.jiraTicketKey ? (
+                        <span className="font-mono text-[11px] font-semibold px-1.5 py-0.5 rounded bg-[#EEF4FB] text-[#1956A6] border border-[#BCD4F3]">
+                          {log.jiraTicketKey}
+                        </span>
+                      ) : (
+                        <span className="text-[#8A8C8E]">—</span>
+                      )}
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   );

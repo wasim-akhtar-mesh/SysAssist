@@ -2,231 +2,202 @@
 
 @layer base {
   :root {
-    color-scheme: dark;
+    color-scheme: light;
   }
 
   body {
-    background-color: #0f1115;
-    color: #e2e8f0;
+    background-color: #D8D7D2;
+    color: #181A1B;
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
     font-feature-settings: "cv02", "cv03", "cv04", "cv11";
     overflow-x: hidden;
   }
 
-  /* Consistent Focus Indicators */
+  /* Steel Blue Focus Ring for Precision Industrial Controls */
   :focus-visible {
-    outline: 2px solid #3b82f6;
+    outline: 2px solid #2C6E9B;
     outline-offset: 2px;
   }
 }
 
 /* --------------------------------------------------------------------------
-   PRECISION INSTRUMENT DESIGN SYSTEM TOKENS
-   Calm, tactile, restrained, matte dark graphite & anodized surfaces.
-   One consistent light source from the upper-left.
+   TITANIUM & INK DESIGN SYSTEM
+   Refined warm precision-instrument interface inspired by laboratory gear,
+   calibrated industrial workstations, and precision desktop hardware.
+   Light Source: Consistent upper-left.
    -------------------------------------------------------------------------- */
 
-/* Main Chassis & Instrument Panels */
-.instrument-panel {
-  background-color: #15181e;
-  border: 1px solid rgba(255, 255, 255, 0.07);
+/* Application Canvas & Baseboard */
+.ti-canvas {
+  background-color: #D8D7D2;
+}
+
+/* Deep Graphite Navigation Rail */
+.ti-rail {
+  background-color: #151719;
+  border-right: 1px solid #23272B;
+}
+
+/* Primary Workstation Surface (Utility bar, main panels) */
+.ti-surface {
+  background-color: #F1F0EC;
+  border: 1px solid #D8D6CF;
   box-shadow: 
-    0 10px 24px -4px rgba(0, 0, 0, 0.5),
-    0 2px 6px -1px rgba(0, 0, 0, 0.4),
-    inset 0 1px 0 rgba(255, 255, 255, 0.06);
+    0 1px 3px rgba(24, 26, 27, 0.04),
+    inset 0 1px 0 rgba(255, 255, 255, 0.85);
 }
 
-/* Header Rack Bar */
-.instrument-header {
-  background-color: #13161c;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+/* Raised Precision Cards (Inventory cards, inspector bays) */
+.ti-card {
+  background-color: #FAF9F5;
+  border: 1px solid #DFDDD6;
+  border-top-color: #FFFFFF;
   box-shadow: 
-    0 4px 16px rgba(0, 0, 0, 0.45),
-    inset 0 -1px 0 rgba(0, 0, 0, 0.6);
+    0 1px 3px rgba(24, 26, 27, 0.05),
+    0 2px 6px -1px rgba(24, 26, 27, 0.03),
+    inset 0 1px 0 rgba(255, 255, 255, 0.95);
+  transition: border-color 0.12s ease, box-shadow 0.12s ease, transform 0.12s ease;
 }
 
-/* Recessed Data Wells & Inset Compartments */
-.instrument-well {
-  background-color: #0b0d10;
-  border: 1px solid rgba(255, 255, 255, 0.04);
+.ti-card:hover {
+  border-color: #C6C4BD;
   box-shadow: 
-    inset 0 2px 4px rgba(0, 0, 0, 0.7),
-    0 1px 0 rgba(255, 255, 255, 0.03);
+    0 3px 8px -1px rgba(24, 26, 27, 0.08),
+    0 1px 3px rgba(24, 26, 27, 0.05),
+    inset 0 1px 0 #FFFFFF;
 }
 
-/* Raised Equipment Cards (Single clear depth level) */
-.instrument-card {
-  background-color: #171b22;
-  border: 1px solid rgba(255, 255, 255, 0.06);
+/* Recessed Wells & Inputs (Search fields, data wells, LCD readouts) */
+.ti-well {
+  background-color: #E5E3DD;
+  border: 1px solid #C7C5BE;
   box-shadow: 
-    0 4px 12px -2px rgba(0, 0, 0, 0.35),
-    inset 0 1px 0 rgba(255, 255, 255, 0.05);
-  transition: border-color 0.15s ease, background-color 0.15s ease, box-shadow 0.15s ease;
+    inset 0 1.5px 3px rgba(24, 26, 27, 0.08),
+    0 1px 0 rgba(255, 255, 255, 0.7);
 }
 
-.instrument-card:hover {
-  background-color: #1a1e27;
-  border-color: rgba(255, 255, 255, 0.12);
+/* Tactile Machined Push Button (Satin Polymer / Bead-blasted aluminum) */
+.ti-btn {
+  background-color: #FAF9F5;
+  border: 1px solid #CFCDBF;
+  border-top-color: #FFFFFF;
   box-shadow: 
-    0 6px 18px -2px rgba(0, 0, 0, 0.45),
-    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+    0 1px 2px rgba(24, 26, 27, 0.07),
+    inset 0 1px 0 rgba(255, 255, 255, 0.95);
+  color: #181A1B;
+  transition: all 0.1s ease;
 }
 
-/* Tactile Machined Push Buttons */
-.instrument-btn {
-  background-color: #1e232d;
-  border: 1px solid rgba(255, 255, 255, 0.09);
-  border-top-color: rgba(255, 255, 255, 0.14);
-  box-shadow: 
-    0 2px 4px rgba(0, 0, 0, 0.35),
-    inset 0 1px 0 rgba(255, 255, 255, 0.08);
-  transition: all 0.12s ease;
+.ti-btn:hover {
+  background-color: #F3F2EC;
+  border-color: #BCBAB0;
+  border-top-color: #FFFFFF;
 }
 
-.instrument-btn:hover {
-  background-color: #252b36;
-  border-color: rgba(255, 255, 255, 0.16);
-  border-top-color: rgba(255, 255, 255, 0.22);
-}
-
-.instrument-btn:active {
+.ti-btn:active {
   transform: translateY(1px);
-  background-color: #171b23;
+  background-color: #E5E3DC;
   box-shadow: 
-    inset 0 2px 4px rgba(0, 0, 0, 0.6),
-    0 0 0 1px rgba(0, 0, 0, 0.2);
+    inset 0 1.5px 3px rgba(24, 26, 27, 0.12),
+    0 0 0 1px rgba(24, 26, 27, 0.05);
 }
 
-/* Primary Cobalt Action Button */
-.instrument-btn-primary {
-  background: linear-gradient(180deg, #2563eb 0%, #1d4ed8 100%);
-  border: 1px solid #3b82f6;
-  border-top-color: #60a5fa;
+/* Brand Action Button (Restrained Burnt Orange #C66A2B) */
+.ti-btn-accent {
+  background-color: #C66A2B;
+  border: 1px solid #A8531A;
+  border-top-color: #DC7B38;
   box-shadow: 
-    0 2px 6px rgba(29, 78, 216, 0.35),
-    inset 0 1px 0 rgba(255, 255, 255, 0.25);
-  color: #ffffff;
-  transition: all 0.12s ease;
+    0 1px 3px rgba(198, 106, 43, 0.35),
+    inset 0 1px 0 rgba(255, 255, 255, 0.3);
+  color: #FFFFFF;
+  font-weight: 600;
+  transition: all 0.1s ease;
 }
 
-.instrument-btn-primary:hover {
-  background: linear-gradient(180deg, #3b82f6 0%, #2563eb 100%);
+.ti-btn-accent:hover {
+  background-color: #B55E22;
   box-shadow: 
-    0 4px 10px rgba(29, 78, 216, 0.45),
+    0 2px 5px rgba(198, 106, 43, 0.45),
     inset 0 1px 0 rgba(255, 255, 255, 0.35);
 }
 
-.instrument-btn-primary:active {
+.ti-btn-accent:active {
   transform: translateY(1px);
-  background: #1e40af;
-  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.6);
+  background-color: #964A15;
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.25);
 }
 
-/* Status / Functional Button Variants */
-.instrument-btn-emerald {
-  background: linear-gradient(180deg, #059669 0%, #047857 100%);
-  border: 1px solid #10b981;
-  border-top-color: #34d399;
-  box-shadow: 0 2px 6px rgba(4, 120, 87, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.2);
-  color: #ffffff;
-}
-.instrument-btn-emerald:hover {
-  background: linear-gradient(180deg, #10b981 0%, #059669 100%);
-}
-.instrument-btn-emerald:active {
-  transform: translateY(1px);
-  background: #065f46;
-  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.6);
-}
-
-/* Calibrated Status LED Indicators */
-.led-housing-precision {
-  background-color: #0d1015;
-  border: 1px solid rgba(255, 255, 255, 0.08);
+/* Operational LED Status Housing */
+.ti-led-housing {
+  background-color: #CFCDBF;
+  border: 1px solid #B6B4A8;
   box-shadow: 
-    inset 0 1px 2px rgba(0, 0, 0, 0.8),
-    0 1px 0 rgba(255, 255, 255, 0.05);
+    inset 0 1px 2px rgba(24, 26, 27, 0.18),
+    0 1px 0 rgba(255, 255, 255, 0.8);
 }
 
-.led-indicator-green {
-  background-color: #10b981;
-  box-shadow: 0 0 6px rgba(16, 185, 129, 0.6);
+/* Status LEDs strictly indicating operational states */
+.ti-led-green {
+  background-color: #10B981;
+  box-shadow: 0 0 4px rgba(16, 185, 129, 0.5);
 }
 
-.led-indicator-amber {
-  background-color: #f59e0b;
-  box-shadow: 0 0 6px rgba(245, 158, 11, 0.6);
+.ti-led-amber {
+  background-color: #D97706;
+  box-shadow: 0 0 4px rgba(217, 119, 6, 0.5);
 }
 
-.led-indicator-red {
-  background-color: #ef4444;
-  box-shadow: 0 0 6px rgba(239, 68, 68, 0.6);
+.ti-led-red {
+  background-color: #DC2626;
+  box-shadow: 0 0 4px rgba(220, 38, 38, 0.5);
 }
 
-.led-indicator-blue {
-  background-color: #3b82f6;
-  box-shadow: 0 0 6px rgba(59, 130, 246, 0.6);
+.ti-led-blue {
+  background-color: #2563EB;
+  box-shadow: 0 0 4px rgba(37, 99, 235, 0.5);
 }
 
-/* Digital Measuring Readout (LCD/OLED style) */
-.instrument-readout {
-  background-color: #090b0e;
-  border: 1px solid rgba(255, 255, 255, 0.06);
+/* Recessed Digital / Telemetry Readout */
+.ti-readout {
+  background-color: #E2E0D8;
+  border: 1px solid #C4C2B8;
   box-shadow: 
-    inset 0 1px 4px rgba(0, 0, 0, 0.85),
-    0 1px 0 rgba(255, 255, 255, 0.04);
+    inset 0 1.5px 3px rgba(24, 26, 27, 0.1),
+    0 1px 0 rgba(255, 255, 255, 0.8);
 }
 
-/* Optical Reticle Scanner Lens */
-.reticle-lens {
-  background-color: #07090c;
-  border: 1px solid rgba(59, 130, 246, 0.25);
-  box-shadow: 
-    inset 0 0 20px rgba(0, 0, 0, 0.9),
-    0 4px 12px rgba(0, 0, 0, 0.6);
+/* Reticle Viewfinder for Barcode Scanner (Functional, no theatrical laser) */
+.ti-reticle {
+  background-color: #151719;
+  border: 1.5px solid #373D44;
+  box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.4);
 }
 
-/* Laser scan line (controlled, subtle) */
-@keyframes opticalLaserSweep {
-  0% { top: 8%; opacity: 0.7; }
-  50% { top: 92%; opacity: 0.9; }
-  100% { top: 8%; opacity: 0.7; }
-}
-
-.optical-laser {
-  position: absolute;
-  left: 5%;
-  right: 5%;
-  height: 1.5px;
-  background: linear-gradient(90deg, transparent 0%, #3b82f6 20%, #93c5fd 50%, #3b82f6 80%, transparent 100%);
-  box-shadow: 0 0 8px rgba(59, 130, 246, 0.8);
-  animation: opticalLaserSweep 2.2s cubic-bezier(0.4, 0, 0.2, 1) infinite;
-}
-
-/* Respect Reduced Motion */
-@media (prefers-reduced-motion: reduce) {
-  .optical-laser {
-    animation: none;
-    top: 50%;
-    opacity: 0.5;
-  }
-  .instrument-btn, .instrument-card {
-    transition: none !important;
-  }
-}
-
-/* Sleek dark scrollbar */
+/* Precision scrollbar for light theme */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
 }
 ::-webkit-scrollbar-track {
-  background: #0b0d10;
+  background: #D8D7D2;
 }
 ::-webkit-scrollbar-thumb {
-  background: #252b36;
+  background: #B8B6AE;
   border-radius: 3px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #374151;
+  background: #9E9C94;
+}
+
+/* Deep graphite rail scrollbar */
+.ti-rail-scroll::-webkit-scrollbar {
+  width: 4px;
+}
+.ti-rail-scroll::-webkit-scrollbar-track {
+  background: #151719;
+}
+.ti-rail-scroll::-webkit-scrollbar-thumb {
+  background: #2E3339;
+  border-radius: 2px;
 }

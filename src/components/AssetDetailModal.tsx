@@ -34,6 +34,11 @@ interface AssetDetailModalProps {
   jiraTickets: JiraTicket[];
 }
 
+/**
+ * Asset Detail Inspector Drawer
+ * Operational Right-Side Inspector on Desktop, Full-Screen Sheet on Mobile.
+ * Preserves background context of the inventory workstation.
+ */
 export const AssetDetailModal: React.FC<AssetDetailModalProps> = ({
   asset,
   isOpen,
@@ -47,7 +52,7 @@ export const AssetDetailModal: React.FC<AssetDetailModalProps> = ({
   const [newAssigneeName, setNewAssigneeName] = useState<string>('Sina Vance');
   const [newAssigneeEmail, setNewAssigneeEmail] = useState<string>('sina.vance@company.internal');
   const [newDepartment, setNewDepartment] = useState<string>('Product Management');
-  const [reassignReason, setReassignReason] = useState<string>('Hardware upgrade per Jira SYS-1084');
+  const [reassignReason, setReassignReason] = useState<string>('Hardware deployment per Jira SYS-1084');
   const [selectedJiraKey, setSelectedJiraKey] = useState<string>('SYS-1084');
   const [isSyncingApple, setIsSyncingApple] = useState<boolean>(false);
   const [appleSyncSuccess, setAppleSyncSuccess] = useState<boolean>(false);
@@ -90,7 +95,7 @@ export const AssetDetailModal: React.FC<AssetDetailModalProps> = ({
         property: 'Apple Coverage & Specs',
         oldValue: asset.appleCoverage ? `${asset.appleCoverage.warrantyStatus} (Last: ${asset.appleCoverage.lastSyncTimestamp.slice(0, 10)})` : 'Unsynced',
         newValue: `${result.coverage.warrantyStatus} (Valid until ${result.coverage.coverageEndDate})`,
-        reason: 'Automated GSX serial spec & AppleCare+ verification'
+        reason: 'Apple GSX Demo serial spec & AppleCare+ verification'
       };
 
       const updated: Asset = {
@@ -133,7 +138,7 @@ export const AssetDetailModal: React.FC<AssetDetailModalProps> = ({
       property: 'Assigned To',
       oldValue: oldAssigneeLabel,
       newValue: newAssigneeLabel,
-      reason: reassignReason || 'Standard fleet redistribution',
+      reason: reassignReason || 'Standard fleet reallocation',
       jiraTicketKey: selectedJiraKey || undefined
     };
 
@@ -169,8 +174,8 @@ export const AssetDetailModal: React.FC<AssetDetailModalProps> = ({
       action: 'CHECK_IN',
       property: 'Assigned To & Status',
       oldValue: `${oldAssigneeLabel} [In Use]`,
-      newValue: 'IT Stock Pool [In Stock]',
-      reason: 'Asset check-in and return to available depot'
+      newValue: 'IT Depot Pool [In Stock]',
+      reason: 'Asset check-in and return to available inventory bay'
     };
 
     const updatedAsset: Asset = {
@@ -187,82 +192,78 @@ export const AssetDetailModal: React.FC<AssetDetailModalProps> = ({
   };
 
   return (
-    <div 
-      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-black/80 backdrop-blur-sm animate-fade-in"
-      onClick={(e) => {
-        if (e.target === e.currentTarget) onClose();
-      }}
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="asset-modal-title"
-    >
-      <div className="w-full max-w-4xl max-h-[92vh] flex flex-col instrument-panel rounded-2xl border border-white/[0.09] shadow-2xl overflow-hidden">
+    <div className="fixed inset-0 z-50 overflow-hidden" role="dialog" aria-modal="true" aria-labelledby="asset-drawer-title">
+      {/* Light Backdrop (click to dismiss) */}
+      <div 
+        className="fixed inset-0 bg-black/35 backdrop-blur-[1px] transition-opacity"
+        onClick={onClose}
+        aria-hidden="true"
+      />
+
+      {/* Right-Side Inspector Drawer on Desktop / Full-screen Sheet on Mobile */}
+      <div className="fixed inset-y-0 right-0 w-full md:w-[520px] lg:w-[580px] bg-[#F1F0EC] border-l border-[#D8D6CF] shadow-2xl flex flex-col z-50 animate-slide-in">
         
-        {/* Modal Header */}
-        <div className="p-4 sm:p-5 border-b border-white/[0.07] bg-[#12151b] flex flex-wrap items-start justify-between gap-3 shrink-0">
-          <div className="flex items-center gap-3">
-            <div className="w-11 h-11 rounded-xl instrument-well flex items-center justify-center text-blue-400 border border-white/[0.05]">
-              <Laptop className="w-5 h-5" />
+        {/* Drawer Header */}
+        <div className="p-3.5 sm:p-4 border-b border-[#D8D6CF] bg-[#FAF9F5] flex items-start justify-between gap-3 shrink-0">
+          <div className="min-w-0">
+            <div className="flex items-center gap-2 flex-wrap mb-1">
+              <span className="font-mono text-xs font-bold px-1.5 py-0.5 rounded bg-[#E5E3DD] text-[#181A1B] border border-[#C5C3BC]">
+                {asset.assetTag}
+              </span>
+              <StatusBadge status={asset.status} />
+              <span className="text-xs text-[#686B6D]">• {asset.category}</span>
             </div>
-            <div>
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="text-xs font-mono font-bold px-2 py-0.5 rounded bg-[#10141b] text-blue-300 border border-blue-600/30">
-                  {asset.assetTag}
-                </span>
-                <h2 id="asset-modal-title" className="text-base sm:text-lg font-sans font-bold text-slate-100">
-                  {asset.name}
-                </h2>
-                <StatusBadge status={asset.status} />
-              </div>
-              <div className="text-xs font-sans text-slate-400 mt-0.5">
-                {asset.manufacturer} • {asset.model} • S/N: <span className="font-mono text-slate-300">{asset.serialNumber}</span>
-              </div>
+            <h2 id="asset-drawer-title" className="text-sm sm:text-base font-bold text-[#181A1B] truncate leading-tight">
+              {asset.name}
+            </h2>
+            <div className="text-[11px] text-[#686B6D] truncate mt-0.5">
+              {asset.manufacturer} • {asset.model} • S/N: <span className="font-mono text-[#181A1B]">{asset.serialNumber}</span>
             </div>
           </div>
 
           <button
             onClick={onClose}
-            className="w-8 h-8 rounded-lg instrument-btn flex items-center justify-center text-slate-400 hover:text-white cursor-pointer"
-            aria-label="Close asset details modal"
+            className="w-7 h-7 rounded ti-btn flex items-center justify-center text-[#505457] hover:text-[#181A1B] cursor-pointer shrink-0"
+            aria-label="Close asset inspector"
           >
             <X className="w-4 h-4" />
           </button>
         </div>
 
-        {/* Modal Tabs Bar */}
-        <div className="px-4 sm:px-5 pt-2 pb-2 border-b border-white/[0.06] bg-[#101318] flex items-center gap-1.5 overflow-x-auto shrink-0">
+        {/* Drawer Navigation Tabs */}
+        <div className="px-3 pt-2 pb-2 border-b border-[#D8D6CF] bg-[#EAE8E2] flex items-center gap-1 overflow-x-auto shrink-0 text-xs">
           <button
             onClick={() => { soundFx.playMechanicalClick(); setActiveTab('overview'); }}
-            className={`px-3 py-1.5 rounded-lg text-xs font-sans font-medium flex items-center gap-1.5 transition-all cursor-pointer whitespace-nowrap ${
+            className={`px-2.5 py-1.5 rounded text-xs font-medium flex items-center gap-1.5 transition-all cursor-pointer whitespace-nowrap ${
               activeTab === 'overview'
-                ? 'bg-[#1e2736] text-white border border-blue-500/40 shadow-xs'
-                : 'text-slate-400 hover:text-slate-200 hover:bg-white/[0.04]'
+                ? 'bg-[#FAF9F5] text-[#C66A2B] shadow-xs font-semibold'
+                : 'text-[#686B6D] hover:text-[#181A1B]'
             }`}
           >
             <Cpu className="w-3.5 h-3.5" />
-            <span>Specifications & Custody</span>
+            <span>Specifications</span>
           </button>
 
           {isApple && (
             <button
               onClick={() => { soundFx.playMechanicalClick(); setActiveTab('apple'); }}
-              className={`px-3 py-1.5 rounded-lg text-xs font-sans font-medium flex items-center gap-1.5 transition-all cursor-pointer whitespace-nowrap ${
+              className={`px-2.5 py-1.5 rounded text-xs font-medium flex items-center gap-1.5 transition-all cursor-pointer whitespace-nowrap ${
                 activeTab === 'apple'
-                  ? 'bg-[#1e2736] text-blue-300 border border-blue-500/40 shadow-xs'
-                  : 'text-slate-400 hover:text-slate-200 hover:bg-white/[0.04]'
+                  ? 'bg-[#FAF9F5] text-[#C66A2B] shadow-xs font-semibold'
+                  : 'text-[#686B6D] hover:text-[#181A1B]'
               }`}
             >
-              <ShieldCheck className="w-3.5 h-3.5 text-blue-400" />
-              <span>Apple GSX Verification</span>
+              <ShieldCheck className="w-3.5 h-3.5 text-[#10B981]" />
+              <span>Apple GSX</span>
             </button>
           )}
 
           <button
             onClick={() => { soundFx.playMechanicalClick(); setActiveTab('changelog'); }}
-            className={`px-3 py-1.5 rounded-lg text-xs font-sans font-medium flex items-center gap-1.5 transition-all cursor-pointer whitespace-nowrap ${
+            className={`px-2.5 py-1.5 rounded text-xs font-medium flex items-center gap-1.5 transition-all cursor-pointer whitespace-nowrap ${
               activeTab === 'changelog'
-                ? 'bg-[#1e2736] text-white border border-blue-500/40 shadow-xs'
-                : 'text-slate-400 hover:text-slate-200 hover:bg-white/[0.04]'
+                ? 'bg-[#FAF9F5] text-[#C66A2B] shadow-xs font-semibold'
+                : 'text-[#686B6D] hover:text-[#181A1B]'
             }`}
           >
             <History className="w-3.5 h-3.5" />
@@ -271,135 +272,114 @@ export const AssetDetailModal: React.FC<AssetDetailModalProps> = ({
 
           <button
             onClick={() => { soundFx.playMechanicalClick(); setActiveTab('label'); }}
-            className={`px-3 py-1.5 rounded-lg text-xs font-sans font-medium flex items-center gap-1.5 transition-all cursor-pointer whitespace-nowrap ${
+            className={`px-2.5 py-1.5 rounded text-xs font-medium flex items-center gap-1.5 transition-all cursor-pointer whitespace-nowrap ${
               activeTab === 'label'
-                ? 'bg-[#1e2736] text-white border border-blue-500/40 shadow-xs'
-                : 'text-slate-400 hover:text-slate-200 hover:bg-white/[0.04]'
+                ? 'bg-[#FAF9F5] text-[#C66A2B] shadow-xs font-semibold'
+                : 'text-[#686B6D] hover:text-[#181A1B]'
             }`}
           >
             <Barcode className="w-3.5 h-3.5" />
-            <span>Asset Tag Plate</span>
+            <span>Tag Plate</span>
           </button>
         </div>
 
-        {/* Modal Body Content (Scrollable) */}
-        <div className="p-4 sm:p-6 overflow-y-auto space-y-4">
+        {/* Drawer Scrollable Content */}
+        <div className="flex-1 overflow-y-auto p-4 space-y-4">
           
           {/* TAB 1: OVERVIEW */}
           {activeTab === 'overview' && (
             <div className="space-y-4">
-              
-              {/* Technical Specifications Bay */}
-              <div className="instrument-card rounded-xl p-4">
-                <div className="flex items-center justify-between mb-3 pb-2 border-b border-white/[0.05]">
-                  <div className="flex items-center gap-2">
-                    <Cpu className="w-4 h-4 text-blue-400" />
-                    <h3 className="text-xs font-sans font-bold uppercase tracking-wider text-slate-200">
-                      Hardware Technical Specifications
+              {/* Technical Specifications */}
+              <div className="ti-card rounded-lg p-3.5">
+                <div className="flex items-center justify-between mb-2.5 pb-1.5 border-b border-[#DFDDD6]">
+                  <div className="flex items-center gap-1.5">
+                    <Cpu className="w-4 h-4 text-[#C66A2B]" />
+                    <h3 className="text-xs font-bold uppercase tracking-wider text-[#181A1B]">
+                      Technical Specifications
                     </h3>
                   </div>
                   {isApple && (
-                    <span className="text-[11px] text-blue-300 font-sans flex items-center gap-1">
+                    <span className="text-[11px] text-[#0F682C] flex items-center gap-1">
                       <ShieldCheck className="w-3 h-3" /> GSX Verified
                     </span>
                   )}
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                  <div className="instrument-well p-3 rounded-lg">
-                    <span className="text-[10px] uppercase font-sans tracking-wide text-slate-500 block mb-0.5">Processor / SoC</span>
-                    <span className="text-xs font-sans font-semibold text-slate-100 block truncate" title={asset.specs.processor}>
-                      {asset.specs.processor}
-                    </span>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                  <div className="p-2 rounded ti-well">
+                    <span className="text-[10px] uppercase tracking-wide text-[#686B6D] block">Processor</span>
+                    <span className="font-semibold text-[#181A1B] truncate block">{asset.specs.processor}</span>
                   </div>
-                  <div className="instrument-well p-3 rounded-lg">
-                    <span className="text-[10px] uppercase font-sans tracking-wide text-slate-500 block mb-0.5">System Memory</span>
-                    <span className="text-xs font-mono font-semibold text-slate-100 block">
-                      {asset.specs.ram}
-                    </span>
+                  <div className="p-2 rounded ti-well">
+                    <span className="text-[10px] uppercase tracking-wide text-[#686B6D] block">Unified Memory</span>
+                    <span className="font-mono font-semibold text-[#181A1B] block">{asset.specs.ram}</span>
                   </div>
-                  <div className="instrument-well p-3 rounded-lg">
-                    <span className="text-[10px] uppercase font-sans tracking-wide text-slate-500 block mb-0.5">Primary Storage</span>
-                    <span className="text-xs font-mono font-semibold text-slate-100 block">
-                      {asset.specs.storage}
-                    </span>
+                  <div className="p-2 rounded ti-well">
+                    <span className="text-[10px] uppercase tracking-wide text-[#686B6D] block">Storage Tier</span>
+                    <span className="font-mono font-semibold text-[#181A1B] block">{asset.specs.storage}</span>
                   </div>
-                  <div className="instrument-well p-3 rounded-lg">
-                    <span className="text-[10px] uppercase font-sans tracking-wide text-slate-500 block mb-0.5">Graphics / GPU</span>
-                    <span className="text-xs font-sans font-semibold text-slate-200 block truncate">
-                      {asset.specs.graphics}
-                    </span>
+                  <div className="p-2 rounded ti-well">
+                    <span className="text-[10px] uppercase tracking-wide text-[#686B6D] block">Graphics / GPU</span>
+                    <span className="font-semibold text-[#181A1B] truncate block">{asset.specs.graphics}</span>
                   </div>
-                  <div className="instrument-well p-3 rounded-lg">
-                    <span className="text-[10px] uppercase font-sans tracking-wide text-slate-500 block mb-0.5">Display Panel</span>
-                    <span className="text-xs font-sans font-semibold text-slate-200 block truncate">
-                      {asset.specs.display}
-                    </span>
+                  <div className="p-2 rounded ti-well">
+                    <span className="text-[10px] uppercase tracking-wide text-[#686B6D] block">Display Output</span>
+                    <span className="font-semibold text-[#181A1B] truncate block">{asset.specs.display}</span>
                   </div>
-                  <div className="instrument-well p-3 rounded-lg">
-                    <span className="text-[10px] uppercase font-sans tracking-wide text-slate-500 block mb-0.5">Operating System</span>
-                    <span className="text-xs font-sans font-semibold text-slate-200 block truncate">
-                      {asset.specs.os}
-                    </span>
+                  <div className="p-2 rounded ti-well">
+                    <span className="text-[10px] uppercase tracking-wide text-[#686B6D] block">Operating System</span>
+                    <span className="font-semibold text-[#181A1B] truncate block">{asset.specs.os}</span>
                   </div>
                 </div>
               </div>
 
-              {/* Custody and Placement Bay */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                
-                {/* Current Custody Card */}
-                <div className="instrument-card rounded-xl p-4 flex flex-col justify-between">
-                  <div>
-                    <div className="flex items-center justify-between mb-3 pb-2 border-b border-white/[0.05]">
-                      <div className="flex items-center gap-2">
-                        <UserCheck className="w-4 h-4 text-emerald-400" />
-                        <h3 className="text-xs font-sans font-bold uppercase tracking-wider text-slate-200">
-                          Current Assigned Custodian
-                        </h3>
-                      </div>
-                      <StatusBadge status={asset.status} />
-                    </div>
-
-                    {asset.assignedTo ? (
-                      <div className="instrument-well p-3.5 rounded-lg space-y-2">
-                        <div className="flex items-center justify-between">
-                          <span className="text-xs text-slate-400 font-sans">Custodian:</span>
-                          <span className="text-xs font-sans font-bold text-slate-100">{asset.assignedTo.name}</span>
-                        </div>
-                        <div className="flex items-center justify-between">
-                          <span className="text-xs text-slate-400 font-sans">Department:</span>
-                          <span className="text-xs font-sans text-slate-200">{asset.assignedTo.department}</span>
-                        </div>
-                        <div className="flex items-center justify-between">
-                          <span className="text-xs text-slate-400 font-sans">Email:</span>
-                          <span className="text-xs font-mono text-blue-300 truncate max-w-[200px]">{asset.assignedTo.email}</span>
-                        </div>
-                        <div className="flex items-center justify-between pt-1.5 border-t border-white/[0.04]">
-                          <span className="text-xs text-slate-400 font-sans">Assigned Date:</span>
-                          <span className="text-xs font-mono text-slate-300">{asset.assignedTo.assignedDate}</span>
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="instrument-well p-5 rounded-lg text-center">
-                        <span className="text-xs text-emerald-400 font-sans font-semibold block mb-1">
-                          Available in Depot Reserves
-                        </span>
-                        <p className="text-xs text-slate-400 font-sans">
-                          Ready for immediate allocation to team member or replacement ticket.
-                        </p>
-                      </div>
-                    )}
+              {/* Custody Assignment Bay */}
+              <div className="ti-card rounded-lg p-3.5">
+                <div className="flex items-center justify-between mb-2.5 pb-1.5 border-b border-[#DFDDD6]">
+                  <div className="flex items-center gap-1.5">
+                    <UserCheck className="w-4 h-4 text-[#C66A2B]" />
+                    <h3 className="text-xs font-bold uppercase tracking-wider text-[#181A1B]">
+                      Custody & Allocation
+                    </h3>
                   </div>
+                  <span className="text-[11px] text-[#686B6D]">
+                    Bay: {asset.location}
+                  </span>
+                </div>
 
-                  <div className="flex flex-wrap items-center gap-2 mt-4 pt-3 border-t border-white/[0.05]">
+                {asset.assignedTo ? (
+                  <div className="p-3 rounded ti-well space-y-2 mb-3">
+                    <div className="flex items-start justify-between gap-2">
+                      <div>
+                        <div className="font-bold text-sm text-[#181A1B]">{asset.assignedTo.name}</div>
+                        <div className="text-xs text-[#505457]">{asset.assignedTo.email}</div>
+                      </div>
+                      <span className="px-2 py-0.5 rounded text-[11px] bg-[#EEF4FB] text-[#1956A6] border border-[#BCD4F3] font-medium">
+                        {asset.assignedTo.role}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between text-[11px] text-[#686B6D] pt-1.5 border-t border-[#D0CECA]">
+                      <span>Department: <strong className="text-[#181A1B]">{asset.assignedTo.department}</strong></span>
+                      <span>Assigned: <strong className="text-[#181A1B] font-mono">{asset.assignedTo.assignedDate}</strong></span>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="p-3 rounded ti-well text-center mb-3">
+                    <div className="text-xs font-semibold text-[#0F682C] mb-0.5">Asset In Storage Depot</div>
+                    <div className="text-[11px] text-[#686B6D]">Available for immediate fulfillment to pending Jira requests.</div>
+                  </div>
+                )}
+
+                {/* Reassignment Action Buttons */}
+                {!isReassigning ? (
+                  <div className="flex items-center gap-2">
                     <SkeuoButton
                       size="sm"
                       variant="primary"
-                      onClick={() => setIsReassigning(!isReassigning)}
+                      onClick={() => setIsReassigning(true)}
                       icon={<UserCheck className="w-3.5 h-3.5" />}
                     >
-                      {asset.assignedTo ? 'Reassign Custody...' : 'Assign to Employee...'}
+                      {asset.assignedTo ? 'Reassign Custody' : 'Assign to Requester'}
                     </SkeuoButton>
 
                     {asset.assignedTo && (
@@ -408,351 +388,237 @@ export const AssetDetailModal: React.FC<AssetDetailModalProps> = ({
                         variant="standard"
                         onClick={handleReturnToStock}
                       >
-                        Check-in / Return to Stock
+                        Return to Depot Pool
                       </SkeuoButton>
                     )}
                   </div>
-                </div>
+                ) : (
+                  /* Reassignment Form */
+                  <form onSubmit={handleExecuteReassignment} className="p-3 rounded ti-surface border border-[#C5C3BC] space-y-2.5">
+                    <h4 className="text-xs font-bold text-[#181A1B] flex items-center justify-between">
+                      <span>Enter Reallocation Details</span>
+                      <span className="text-[10px] text-[#686B6D] font-normal">Operator: {currentUser}</span>
+                    </h4>
 
-                {/* Location and Acquisition Details */}
-                <div className="instrument-card rounded-xl p-4">
-                  <div className="flex items-center gap-2 mb-3 pb-2 border-b border-white/[0.05]">
-                    <MapPin className="w-4 h-4 text-amber-400" />
-                    <h3 className="text-xs font-sans font-bold uppercase tracking-wider text-slate-200">
-                      Depot Location & Procurement
-                    </h3>
-                  </div>
-
-                  <div className="instrument-well p-3.5 rounded-lg space-y-2 text-xs font-sans">
-                    <div className="flex justify-between items-center">
-                      <span className="text-slate-400">Physical Location:</span>
-                      <span className="text-slate-200 font-semibold">{asset.location}</span>
-                    </div>
-                    <div className="flex justify-between items-center">
-                      <span className="text-slate-400">Purchase Date:</span>
-                      <span className="text-slate-200 font-mono">{asset.purchaseDate}</span>
-                    </div>
-                    <div className="flex justify-between items-center">
-                      <span className="text-slate-400">Purchase Cost:</span>
-                      <span className="text-emerald-400 font-mono font-bold">${asset.purchasePrice.toFixed(2)}</span>
-                    </div>
-                    <div className="flex justify-between items-center">
-                      <span className="text-slate-400">Supplier:</span>
-                      <span className="text-slate-200">{asset.supplier}</span>
-                    </div>
-                    <div className="flex justify-between items-center pt-1.5 border-t border-white/[0.04]">
-                      <span className="text-slate-400">Warranty Expiration:</span>
-                      <span className="text-amber-300 font-mono font-semibold">{asset.warrantyExpiry}</span>
-                    </div>
-                  </div>
-
-                  {asset.linkedJiraKey && (
-                    <div className="mt-3 p-2.5 rounded-lg bg-blue-950/40 border border-blue-700/30 flex items-center justify-between text-xs font-sans">
-                      <div className="flex items-center gap-2 text-blue-300">
-                        <Tag className="w-3.5 h-3.5 text-blue-400" />
-                        <span>Linked Jira: <strong className="font-mono">{asset.linkedJiraKey}</strong></span>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                      <div>
+                        <label className="block text-[10px] uppercase text-[#686B6D] mb-0.5 font-medium">Custodian Name</label>
+                        <input
+                          type="text"
+                          value={newAssigneeName}
+                          onChange={(e) => setNewAssigneeName(e.target.value)}
+                          required
+                          className="w-full h-7.5 px-2 rounded ti-well text-xs text-[#181A1B] border border-[#C5C3BC] focus:outline-2 focus:outline-[#2C6E9B]"
+                        />
                       </div>
-                      <span className="text-[10px] text-blue-400 uppercase font-semibold">Service Desk</span>
+                      <div>
+                        <label className="block text-[10px] uppercase text-[#686B6D] mb-0.5 font-medium">Email Address</label>
+                        <input
+                          type="email"
+                          value={newAssigneeEmail}
+                          onChange={(e) => setNewAssigneeEmail(e.target.value)}
+                          required
+                          className="w-full h-7.5 px-2 rounded ti-well text-xs text-[#181A1B] border border-[#C5C3BC] focus:outline-2 focus:outline-[#2C6E9B]"
+                        />
+                      </div>
                     </div>
-                  )}
-                </div>
-              </div>
 
-              {/* REASSIGNMENT FORM DRAWER (Shows who did, when did, to which property) */}
-              {isReassigning && (
-                <form onSubmit={handleExecuteReassignment} className="p-4 sm:p-5 rounded-xl instrument-panel border border-blue-500/50 shadow-xl animate-fade-in space-y-3.5">
-                  <div className="flex items-center justify-between pb-2.5 border-b border-white/[0.08]">
-                    <div className="flex items-center gap-2">
-                      <UserCheck className="w-4 h-4 text-blue-400" />
-                      <h4 className="text-sm font-sans font-bold text-slate-100">
-                        Reassign Equipment Custodian
-                      </h4>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                      <div>
+                        <label className="block text-[10px] uppercase text-[#686B6D] mb-0.5 font-medium">Department</label>
+                        <input
+                          type="text"
+                          value={newDepartment}
+                          onChange={(e) => setNewDepartment(e.target.value)}
+                          required
+                          className="w-full h-7.5 px-2 rounded ti-well text-xs text-[#181A1B] border border-[#C5C3BC] focus:outline-2 focus:outline-[#2C6E9B]"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[10px] uppercase text-[#686B6D] mb-0.5 font-medium">Linked Jira Ticket</label>
+                        <select
+                          value={selectedJiraKey}
+                          onChange={(e) => setSelectedJiraKey(e.target.value)}
+                          className="w-full h-7.5 px-2 rounded ti-btn text-xs text-[#181A1B] border border-[#CFCDBF] focus:outline-2 focus:outline-[#2C6E9B]"
+                        >
+                          <option value="">None / Manual Assignment</option>
+                          {jiraTickets.map(t => (
+                            <option key={t.key} value={t.key}>
+                              {t.key} - {t.requester.name} ({t.priority})
+                            </option>
+                          ))}
+                        </select>
+                      </div>
                     </div>
-                    <span className="text-xs font-sans text-slate-400">
-                      Operator: <strong className="text-blue-300">{currentUser}</strong>
-                    </span>
-                  </div>
 
-                  {/* Visual preview of diff */}
-                  <div className="p-3 rounded-lg instrument-well flex items-center justify-between gap-3 text-xs font-sans">
                     <div>
-                      <span className="text-slate-500 block text-[10px] uppercase font-medium">Previous Custodian:</span>
-                      <span className="text-rose-300 font-semibold">{asset.assignedTo ? asset.assignedTo.name : 'IT Depot Pool'}</span>
-                    </div>
-                    <ArrowRight className="w-4 h-4 text-slate-500 shrink-0" />
-                    <div>
-                      <span className="text-slate-500 block text-[10px] uppercase font-medium">New Custodian:</span>
-                      <span className="text-emerald-400 font-semibold">{newAssigneeName || 'Enter name below'}</span>
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <div>
-                      <label className="block text-xs font-sans font-semibold text-slate-300 mb-1">
-                        New Assignee Full Name *
-                      </label>
+                      <label className="block text-[10px] uppercase text-[#686B6D] mb-0.5 font-medium">Justification / Change Note</label>
                       <input
                         type="text"
-                        required
-                        value={newAssigneeName}
-                        onChange={(e) => setNewAssigneeName(e.target.value)}
-                        placeholder="e.g. Sina Vance"
-                        className="w-full h-9 px-3 instrument-well rounded-lg text-xs font-sans text-slate-100 border border-white/[0.06] focus:border-blue-500 focus:outline-none"
+                        value={reassignReason}
+                        onChange={(e) => setReassignReason(e.target.value)}
+                        placeholder="e.g. Onboarding replacement or department hardware refresh"
+                        className="w-full h-7.5 px-2 rounded ti-well text-xs text-[#181A1B] border border-[#C5C3BC] focus:outline-2 focus:outline-[#2C6E9B]"
                       />
                     </div>
 
-                    <div>
-                      <label className="block text-xs font-sans font-semibold text-slate-300 mb-1">
-                        Department
-                      </label>
-                      <select
-                        value={newDepartment}
-                        onChange={(e) => setNewDepartment(e.target.value)}
-                        className="w-full h-9 px-3 instrument-btn rounded-lg text-xs font-sans text-slate-200 border border-white/[0.08] focus:border-blue-500 focus:outline-none cursor-pointer"
-                      >
-                        <option value="Product Management">Product Management</option>
-                        <option value="Engineering">Engineering</option>
-                        <option value="Design">Design</option>
-                        <option value="Data Science">Data Science</option>
-                        <option value="Operations">Operations</option>
-                        <option value="Executive">Executive</option>
-                      </select>
+                    <div className="flex items-center justify-end gap-2 pt-1">
+                      <SkeuoButton size="sm" variant="subtle" type="button" onClick={() => setIsReassigning(false)}>
+                        Cancel
+                      </SkeuoButton>
+                      <SkeuoButton size="sm" variant="primary" type="submit">
+                        Commit Reallocation
+                      </SkeuoButton>
                     </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <div>
-                      <label className="block text-xs font-sans font-semibold text-slate-300 mb-1">
-                        Corporate Email
-                      </label>
-                      <input
-                        type="email"
-                        value={newAssigneeEmail}
-                        onChange={(e) => setNewAssigneeEmail(e.target.value)}
-                        placeholder="sina.vance@company.internal"
-                        className="w-full h-9 px-3 instrument-well rounded-lg text-xs font-sans text-slate-100 border border-white/[0.06] focus:border-blue-500 focus:outline-none"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-xs font-sans font-semibold text-slate-300 mb-1">
-                        Link Jira Ticket (Optional)
-                      </label>
-                      <select
-                        value={selectedJiraKey}
-                        onChange={(e) => setSelectedJiraKey(e.target.value)}
-                        className="w-full h-9 px-3 instrument-btn rounded-lg text-xs font-sans text-slate-200 border border-white/[0.08] focus:border-blue-500 focus:outline-none cursor-pointer"
-                      >
-                        <option value="">No linked Jira ticket</option>
-                        {jiraTickets.map(t => (
-                          <option key={t.key} value={t.key}>
-                            {t.key}: {t.summary.slice(0, 32)}...
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-sans font-semibold text-slate-300 mb-1">
-                      Audit Reason & Justification *
-                    </label>
-                    <input
-                      type="text"
-                      required
-                      value={reassignReason}
-                      onChange={(e) => setReassignReason(e.target.value)}
-                      placeholder="e.g. Hardware upgrade per Jira SYS-1084, confirmed with IT manager"
-                      className="w-full h-9 px-3 instrument-well rounded-lg text-xs font-sans text-slate-100 border border-white/[0.06] focus:border-blue-500 focus:outline-none"
-                    />
-                  </div>
-
-                  <div className="flex items-center justify-end gap-2 pt-2 border-t border-white/[0.06]">
-                    <SkeuoButton
-                      type="button"
-                      variant="subtle"
-                      onClick={() => setIsReassigning(false)}
-                    >
-                      Cancel
-                    </SkeuoButton>
-
-                    <SkeuoButton
-                      type="submit"
-                      variant="primary"
-                      icon={<CheckCircle2 className="w-3.5 h-3.5" />}
-                    >
-                      Confirm Reassignment
-                    </SkeuoButton>
-                  </div>
-                </form>
-              )}
+                  </form>
+                )}
+              </div>
             </div>
           )}
 
-          {/* TAB 2: APPLE GSX VERIFICATION (DEMO) */}
+          {/* TAB 2: APPLE GSX VERIFICATION */}
           {activeTab === 'apple' && isApple && (
-            <div className="space-y-4">
-              <div className="instrument-card rounded-xl p-5">
-                <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-white/[0.06] mb-4">
+            <div className="space-y-3.5">
+              <div className="ti-card rounded-lg p-3.5">
+                <div className="flex items-center justify-between mb-3 pb-2 border-b border-[#DFDDD6]">
                   <div>
-                    <div className="flex items-center gap-2">
-                      <ShieldCheck className="w-5 h-5 text-blue-400" />
-                      <h3 className="text-sm font-sans font-bold text-slate-100">
-                        Apple Global Service Exchange (GSX) API Integration
-                      </h3>
-                      <span className="text-[10px] font-sans font-semibold px-2 py-0.5 rounded bg-blue-950 text-blue-300 border border-blue-700/40">
-                        Demo API Sandbox
-                      </span>
+                    <h3 className="text-xs font-bold uppercase tracking-wider text-[#181A1B] flex items-center gap-1.5">
+                      <ShieldCheck className="w-4 h-4 text-[#10B981]" />
+                      Apple GSX Entitlement Service
+                    </h3>
+                    <div className="text-[11px] text-[#686B6D] mt-0.5">
+                      Demo API Sandbox • Serial lookup & warranty status
                     </div>
-                    <p className="text-xs font-sans text-slate-400 mt-0.5">
-                      Direct verification against Apple serial registry. Pulls verified hardware configuration and AppleCare+ status.
-                    </p>
                   </div>
-
+                  
                   <SkeuoButton
                     size="sm"
                     variant="primary"
-                    disabled={isSyncingApple}
                     onClick={handleSyncApple}
+                    disabled={isSyncingApple}
                     icon={<RefreshCw className={`w-3.5 h-3.5 ${isSyncingApple ? 'animate-spin' : ''}`} />}
                   >
-                    {isSyncingApple ? 'Querying GSX...' : 'Re-verify with Apple'}
+                    {isSyncingApple ? 'Querying...' : 'Sync Coverage'}
                   </SkeuoButton>
                 </div>
 
                 {appleSyncSuccess && (
-                  <div className="p-3 rounded-lg bg-emerald-950/40 border border-emerald-500/40 text-emerald-300 text-xs font-sans mb-4 flex items-center gap-2">
-                    <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-400" />
-                    <span>Successfully verified hardware entitlement with Apple GSX registry. Audit entry recorded.</span>
+                  <div className="p-2 mb-3 rounded bg-[#EBF7EE] border border-[#B7E5C3] text-xs text-[#0F682C] flex items-center gap-2">
+                    <CheckCircle2 className="w-4 h-4" />
+                    <span>Entitlement verified and recorded to audit trail.</span>
                   </div>
                 )}
 
                 {asset.appleCoverage ? (
-                  <div className="space-y-4">
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-                      <div className="instrument-well p-3.5 rounded-lg">
-                        <span className="text-[10px] font-sans uppercase tracking-wide text-slate-500 block mb-0.5">Coverage Status</span>
-                        <span className="text-sm font-sans font-bold text-emerald-400 flex items-center gap-1.5">
-                          <CheckCircle2 className="w-3.5 h-3.5" />
-                          {asset.appleCoverage.warrantyStatus}
-                        </span>
+                  <div className="space-y-2.5 text-xs">
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="p-2 rounded ti-well">
+                        <span className="text-[10px] text-[#686B6D] block">Warranty Tier</span>
+                        <span className="font-bold text-[#0F682C] block">{asset.appleCoverage.warrantyStatus}</span>
                       </div>
-
-                      <div className="instrument-well p-3.5 rounded-lg">
-                        <span className="text-[10px] font-sans uppercase tracking-wide text-slate-500 block mb-0.5">Coverage End Date</span>
-                        <span className="text-sm font-mono font-bold text-slate-100">
-                          {asset.appleCoverage.coverageEndDate}
-                        </span>
-                      </div>
-
-                      <div className="instrument-well p-3.5 rounded-lg">
-                        <span className="text-[10px] font-sans uppercase tracking-wide text-slate-500 block mb-0.5">Days Remaining</span>
-                        <span className="text-sm font-mono font-bold text-blue-300">
-                          {asset.appleCoverage.daysRemaining} days
-                        </span>
-                      </div>
-
-                      <div className="instrument-well p-3.5 rounded-lg">
-                        <span className="text-[10px] font-sans uppercase tracking-wide text-slate-500 block mb-0.5">Agreement Number</span>
-                        <span className="text-xs font-mono font-bold text-slate-300 truncate block">
-                          {asset.appleCoverage.agreementNumber}
-                        </span>
+                      <div className="p-2 rounded ti-well">
+                        <span className="text-[10px] text-[#686B6D] block">Agreement Number</span>
+                        <span className="font-mono font-medium text-[#181A1B] block">{asset.appleCoverage.agreementNumber}</span>
                       </div>
                     </div>
 
-                    <div className="instrument-well p-4 rounded-lg space-y-2.5 text-xs font-sans border border-white/[0.04]">
-                      <div className="flex justify-between items-center">
-                        <span className="text-slate-400">Verified Apple Model:</span>
-                        <span className="text-slate-200 font-semibold">{asset.appleCoverage.appleModelName}</span>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="p-2 rounded ti-well">
+                        <span className="text-[10px] text-[#686B6D] block">Purchase Date</span>
+                        <span className="font-mono text-[#181A1B] block">{asset.appleCoverage.purchaseDate}</span>
                       </div>
-                      <div className="flex justify-between items-center">
-                        <span className="text-slate-400">Registered Purchase Date:</span>
-                        <span className="text-slate-200 font-mono">{asset.appleCoverage.purchaseDate}</span>
+                      <div className="p-2 rounded ti-well">
+                        <span className="text-[10px] text-[#686B6D] block">Coverage End Date</span>
+                        <span className="font-mono font-semibold text-[#181A1B] block">{asset.appleCoverage.coverageEndDate}</span>
                       </div>
-                      <div className="flex justify-between items-center">
-                        <span className="text-slate-400">AppleCare Plan:</span>
-                        <span className="text-blue-300 font-medium">{asset.appleCoverage.appleCarePlan}</span>
+                    </div>
+
+                    <div className="p-2.5 rounded bg-[#FAF9F5] border border-[#DFDDD6] text-[11px] text-[#686B6D] space-y-1">
+                      <div className="flex justify-between">
+                        <span>Hardware Coverage:</span>
+                        <strong className="text-[#0F682C]">{asset.appleCoverage.hardwareCoverage}</strong>
                       </div>
-                      <div className="flex justify-between items-center">
-                        <span className="text-slate-400">Hardware Technical Support:</span>
-                        <span className="text-emerald-400 font-medium">Eligible for Priority Phone & Onsite</span>
+                      <div className="flex justify-between">
+                        <span>Technical Support:</span>
+                        <strong className="text-[#0F682C]">{asset.appleCoverage.techSupportCoverage}</strong>
                       </div>
-                      <div className="flex justify-between items-center pt-2 border-t border-white/[0.04]">
-                        <span className="text-slate-400">Last Verified Timestamp:</span>
-                        <span className="text-slate-400 font-mono text-[11px]">{new Date(asset.appleCoverage.lastSyncTimestamp).toLocaleString()}</span>
+                      <div className="flex justify-between pt-1 border-t border-[#EAE8E2]">
+                        <span>Last Verified:</span>
+                        <span className="font-mono text-[#181A1B]">{new Date(asset.appleCoverage.lastSyncTimestamp).toLocaleString()}</span>
                       </div>
                     </div>
                   </div>
                 ) : (
-                  <div className="p-8 text-center instrument-well rounded-xl text-xs font-sans text-slate-400">
-                    No GSX entitlement records currently cached. Click &ldquo;Re-verify with Apple&rdquo; to fetch coverage status.
+                  <div className="p-4 rounded ti-well text-center text-xs">
+                    <p className="text-[#686B6D] mb-3">No GSX entitlement records currently cached for serial <span className="font-mono font-bold text-[#181A1B]">{asset.serialNumber}</span>.</p>
+                    <SkeuoButton size="sm" variant="primary" onClick={handleSyncApple} disabled={isSyncingApple}>
+                      Execute GSX Entitlement Check
+                    </SkeuoButton>
                   </div>
                 )}
               </div>
             </div>
           )}
 
-          {/* TAB 3: CHANGE LOG & AUDIT TRAIL */}
+          {/* TAB 3: CHANGE LOG */}
           {activeTab === 'changelog' && (
-            <div className="space-y-3">
-              <div className="flex items-center justify-between pb-2 border-b border-white/[0.06]">
-                <h3 className="text-xs font-sans font-bold uppercase tracking-wider text-slate-200">
-                  Audit History for {asset.assetTag}
-                </h3>
-                <span className="text-xs font-sans text-slate-400">
-                  {asset.changeLogs.length} logged modifications
-                </span>
+            <div className="space-y-2.5">
+              <div className="flex items-center justify-between text-xs text-[#686B6D] px-1">
+                <span>Total Events: <strong className="text-[#181A1B]">{asset.changeLogs.length}</strong></span>
+                <span className="font-mono text-[10px]">DEVICE ID: {asset.id}</span>
               </div>
 
-              {asset.changeLogs.length === 0 ? (
-                <div className="p-8 text-center instrument-well rounded-xl text-xs font-sans text-slate-400">
-                  No previous change log entries recorded for this unit.
-                </div>
-              ) : (
-                asset.changeLogs.map(log => (
-                  <div key={log.id} className="instrument-card rounded-xl p-3.5 space-y-2 text-xs font-sans">
-                    <div className="flex flex-wrap items-center justify-between gap-2">
-                      <div className="flex items-center gap-2">
-                        <span className="font-semibold text-slate-200">{log.action}</span>
-                        <span className="text-[10px] px-1.5 py-0.2 rounded bg-amber-950/60 text-amber-300 border border-amber-800/40 font-mono">
-                          {log.property}
-                        </span>
-                      </div>
-                      <span className="text-[11px] text-slate-400 font-mono">
-                        {new Date(log.timestamp).toLocaleString()}
-                      </span>
-                    </div>
+              {asset.changeLogs.map((log) => (
+                <div key={log.id} className="p-3 rounded-lg ti-card space-y-1.5 text-xs">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="font-bold text-[#181A1B]">{log.action}</span>
+                    <span className="font-mono text-[10px] text-[#686B6D]">
+                      {new Date(log.timestamp).toLocaleString()}
+                    </span>
+                  </div>
 
-                    <div className="instrument-well p-2.5 rounded-lg grid grid-cols-1 sm:grid-cols-2 gap-2 text-[11px]">
-                      <div>
-                        <span className="text-slate-500 block text-[9px] uppercase font-sans">Previous:</span>
-                        <span className="text-rose-300 font-mono line-through truncate block">{log.oldValue}</span>
-                      </div>
-                      <div>
-                        <span className="text-slate-500 block text-[9px] uppercase font-sans">Updated:</span>
-                        <span className="text-emerald-400 font-mono font-semibold truncate block">{log.newValue}</span>
-                      </div>
-                    </div>
+                  <div className="text-[11px] text-[#505457]">
+                    Property: <strong className="text-[#181A1B]">{log.property}</strong>
+                  </div>
 
-                    <div className="flex flex-wrap items-center justify-between gap-2 text-[11px] text-slate-400 pt-1">
-                      <span>Operator: <strong className="text-slate-200">{log.performedBy}</strong></span>
-                      {log.reason && <span className="italic">&ldquo;{log.reason}&rdquo;</span>}
-                      {log.jiraTicketKey && (
-                        <span className="font-mono text-blue-300 px-1.5 py-0.2 rounded bg-blue-950 border border-blue-800/40">
-                          {log.jiraTicketKey}
-                        </span>
-                      )}
+                  <div className="p-2 rounded ti-well text-[11px] font-mono grid grid-cols-2 gap-2">
+                    <div>
+                      <span className="text-[#A81F1A] block text-[10px] uppercase">Before</span>
+                      <span className="text-[#505457] truncate block">{log.oldValue}</span>
+                    </div>
+                    <div>
+                      <span className="text-[#0F682C] block text-[10px] uppercase">After</span>
+                      <span className="text-[#181A1B] font-semibold truncate block">{log.newValue}</span>
                     </div>
                   </div>
-                ))
-              )}
+
+                  <div className="flex items-center justify-between text-[10px] text-[#686B6D] pt-1">
+                    <span>By: <strong className="text-[#181A1B]">{log.performedBy}</strong></span>
+                    {log.jiraTicketKey && (
+                      <span className="font-mono px-1 rounded bg-[#EEF4FB] text-[#1956A6] border border-[#BCD4F3]">
+                        {log.jiraTicketKey}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              ))}
             </div>
           )}
 
-          {/* TAB 4: PHYSICAL ASSET TAG PLATE */}
+          {/* TAB 4: ASSET TAG PLATE */}
           {activeTab === 'label' && (
-            <div className="space-y-3 max-w-lg mx-auto py-2">
-              <BarcodeLabelPlate asset={asset} showPrintButton={true} />
+            <div className="space-y-3">
+              <div className="ti-card rounded-lg p-3.5">
+                <h3 className="text-xs font-bold uppercase tracking-wider text-[#181A1B] mb-2">
+                  Calibrated Hardware Asset Tag Plate
+                </h3>
+                <p className="text-xs text-[#686B6D] mb-4">
+                  Printable barcode identification tag for physical chassis affixing.
+                </p>
+                <div className="flex justify-center p-2 bg-[#E5E3DD] rounded-lg border border-[#C5C3BC]">
+                  <BarcodeLabelPlate asset={asset} />
+                </div>
+              </div>
             </div>
           )}
         </div>

@@ -1,6 +1,6 @@
 {
   "name": "SysAssist",
-  "description": "Skeuomorphic dark-themed IT asset management system for laptops and peripherals with barcode scanning, Jira hardware ticketing, change logs, audit trail, and Apple warranty coverage integration.",
+  "description": "Precision IT hardware asset management workstation in a refined Titanium & Ink aesthetic, featuring fluid inventory bays, optical barcode scanning, Jira request fulfillment, buffer threshold alerts, audit trail, and Apple GSX entitlement verification.",
   "requestFramePermissions": [
     "camera"
   ],

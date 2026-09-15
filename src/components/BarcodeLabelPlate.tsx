@@ -1,8 +1,9 @@
 import React, { useEffect, useRef } from 'react';
 import JsBarcode from 'jsbarcode';
 import { Asset } from '../types';
-import { ScrewHead, SkeuoButton } from './SkeuoComponents';
+import { SkeuoButton } from './SkeuoComponents';
 import { Printer } from 'lucide-react';
+import { soundFx } from '../services/audioService';
 
 interface BarcodeLabelPlateProps {
   asset: Asset;
@@ -17,7 +18,7 @@ export const BarcodeLabelPlate: React.FC<BarcodeLabelPlateProps> = ({ asset, sho
       try {
         JsBarcode(barcodeSvgRef.current, asset.barcode, {
           format: 'CODE128',
-          lineColor: '#0f172a',
+          lineColor: '#181A1B',
           width: 1.6,
           height: 38,
           displayValue: true,
@@ -33,6 +34,7 @@ export const BarcodeLabelPlate: React.FC<BarcodeLabelPlateProps> = ({ asset, sho
   }, [asset.barcode]);
 
   const handlePrint = () => {
+    soundFx.playMechanicalClick();
     const printWindow = window.open('', '_blank');
     if (!printWindow) return;
 
@@ -50,7 +52,7 @@ export const BarcodeLabelPlate: React.FC<BarcodeLabelPlateProps> = ({ asset, sho
         </head>
         <body>
           <div class="tag-box">
-            <div class="tag-header">SYSASSIST ENTERPRISE IT ASSET INFRASTRUCTURE</div>
+            <div class="tag-header">SYSASSIST HARDWARE OPERATIONS • CALIBRATED TAG</div>
             <div class="tag-id">${asset.assetTag}</div>
             <div style="margin: 8px 0;">${barcodeSvgRef.current?.outerHTML || ''}</div>
             <div class="meta"><strong>S/N:</strong> ${asset.serialNumber}</div>
@@ -64,55 +66,59 @@ export const BarcodeLabelPlate: React.FC<BarcodeLabelPlateProps> = ({ asset, sho
   };
 
   return (
-    <div className="flex flex-col gap-3">
-      {/* Matte Anodized Aluminum Chassis Badge */}
-      <div className="relative p-5 rounded-xl bg-gradient-to-b from-[#e8edf4] via-[#d5dbe4] to-[#b0b9c6] text-slate-900 shadow-[0_6px_16px_rgba(0,0,0,0.5),inset_0_1px_0_rgba(255,255,255,0.9),inset_0_-1px_2px_rgba(0,0,0,0.3)] border border-slate-400 select-none overflow-hidden">
+    <div className="flex flex-col items-center gap-3 w-full max-w-sm">
+      {/* Precision Bead-blasted Aluminum Chassis Badge */}
+      <div className="relative w-full p-4 rounded-lg bg-[#E2E0D8] text-[#181A1B] shadow-[0_2px_8px_rgba(24,26,27,0.1),inset_0_1px_0_rgba(255,255,255,0.8)] border border-[#C5C3BC] select-none overflow-hidden">
         
-        {/* Real corner screw mounts (chassis badge only) */}
-        <div className="absolute top-2.5 left-2.5"><ScrewHead rotation={45} size="sm" /></div>
-        <div className="absolute top-2.5 right-2.5"><ScrewHead rotation={135} size="sm" /></div>
-        <div className="absolute bottom-2.5 left-2.5"><ScrewHead rotation={90} size="sm" /></div>
-        <div className="absolute bottom-2.5 right-2.5"><ScrewHead rotation={15} size="sm" /></div>
+        {/* Precision Registration Pin Markers in corners */}
+        <div className="absolute top-2 left-2 w-1.5 h-1.5 rounded-full bg-[#181A1B]/20 border border-[#181A1B]/40" />
+        <div className="absolute top-2 right-2 w-1.5 h-1.5 rounded-full bg-[#181A1B]/20 border border-[#181A1B]/40" />
+        <div className="absolute bottom-2 left-2 w-1.5 h-1.5 rounded-full bg-[#181A1B]/20 border border-[#181A1B]/40" />
+        <div className="absolute bottom-2 right-2 w-1.5 h-1.5 rounded-full bg-[#181A1B]/20 border border-[#181A1B]/40" />
 
         {/* Plate Content */}
-        <div className="px-4 py-1 text-center flex flex-col items-center">
-          <div className="text-[9px] font-sans tracking-widest uppercase font-bold text-slate-700 border-b border-slate-400/80 pb-1 w-full text-center">
-            SYSASSIST IT ASSET REGISTRATION • TAMPER RESISTANT
+        <div className="px-2 py-1 text-center flex flex-col items-center">
+          <div className="text-[9px] font-sans tracking-widest uppercase font-bold text-[#505457] border-b border-[#C5C3BC] pb-1 w-full text-center">
+            SYSASSIST HARDWARE OPERATIONS • CALIBRATED TAG
           </div>
 
-          <div className="mt-2.5 flex items-baseline justify-between w-full px-2">
-            <span className="text-2xl font-mono font-black tracking-widest text-slate-950">
+          <div className="mt-2 flex items-baseline justify-between w-full px-1">
+            <span className="text-xl font-mono font-bold tracking-wider text-[#181A1B]">
               {asset.assetTag}
             </span>
-            <span className="text-[10px] font-sans font-bold px-2 py-0.5 rounded bg-slate-900 text-slate-100 uppercase tracking-wide">
+            <span className="text-[9px] font-sans font-bold px-1.5 py-0.5 rounded bg-[#181A1B] text-[#FAF9F5] uppercase tracking-wide">
               {asset.category}
             </span>
           </div>
 
           {/* Barcode SVG */}
-          <div className="w-full flex justify-center py-1.5">
+          <div className="w-full flex justify-center py-1">
             <svg ref={barcodeSvgRef} className="max-w-full h-auto" />
           </div>
 
           {/* Asset Metadata Footer */}
-          <div className="grid grid-cols-2 gap-2 w-full text-[11px] font-mono text-slate-800 pt-1.5 border-t border-slate-400/60 mt-1">
+          <div className="grid grid-cols-2 gap-2 w-full text-[10px] font-mono text-[#181A1B] pt-1.5 border-t border-[#C5C3BC] mt-1">
             <div className="text-left truncate">
-              <span className="font-sans font-semibold text-slate-600 text-[10px] uppercase">S/N: </span>
-              <span className="font-bold">{asset.serialNumber}</span>
+              <span className="font-sans font-medium text-[#686B6D] text-[9px] uppercase">S/N: </span>
+              <span>{asset.serialNumber}</span>
             </div>
-            <div className="text-right truncate font-medium font-sans">
-              {asset.manufacturer} {asset.model}
+            <div className="text-right truncate">
+              <span className="font-sans font-medium text-[#686B6D] text-[9px] uppercase">LOCATION: </span>
+              <span className="truncate">{asset.location}</span>
             </div>
           </div>
         </div>
       </div>
 
       {showPrintButton && (
-        <div className="flex justify-end">
-          <SkeuoButton size="sm" variant="standard" onClick={handlePrint} icon={<Printer className="w-3.5 h-3.5" />}>
-            Print Hardware Asset Tag
-          </SkeuoButton>
-        </div>
+        <SkeuoButton
+          size="sm"
+          variant="standard"
+          onClick={handlePrint}
+          icon={<Printer className="w-3.5 h-3.5 text-[#686B6D]" />}
+        >
+          Print Physical Tag Plate
+        </SkeuoButton>
       )}
     </div>
   );

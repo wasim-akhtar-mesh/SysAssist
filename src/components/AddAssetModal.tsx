@@ -35,7 +35,6 @@ export const AddAssetModal: React.FC<AddAssetModalProps> = ({
   const [isQueryingApple, setIsQueryingApple] = useState<boolean>(false);
   const [appleQueried, setAppleQueried] = useState<boolean>(false);
 
-  // Close on Escape
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape' && isOpen) {
@@ -69,7 +68,6 @@ export const AddAssetModal: React.FC<AddAssetModalProps> = ({
     e.preventDefault();
     const assetTag = `AST-${Math.floor(1000 + Math.random() * 9000)}`;
     const now = new Date().toISOString();
-
     const isApple = manufacturer.toLowerCase() === 'apple';
 
     const newAsset: Asset = {
@@ -119,12 +117,11 @@ export const AddAssetModal: React.FC<AddAssetModalProps> = ({
       action: 'CREATED',
       property: 'Fleet Record',
       oldValue: 'Unregistered',
-      newValue: `Provisioned into ${location} (Status: In Stock)`,
+      newValue: `Enrolled into ${location} (In Stock)`,
       reason: `New hardware intake. Serial: ${serialNumber}`
     };
 
     newAsset.changeLogs = [initialLog];
-
     soundFx.playReassignSuccess();
     onAddAsset(newAsset, initialLog);
     onClose();
@@ -132,250 +129,195 @@ export const AddAssetModal: React.FC<AddAssetModalProps> = ({
 
   return (
     <div 
-      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-black/80 backdrop-blur-sm animate-fade-in"
+      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-black/40 backdrop-blur-xs animate-fade-in"
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
       role="dialog"
       aria-modal="true"
-      aria-labelledby="intake-modal-title"
+      aria-labelledby="add-modal-title"
     >
-      <div className="w-full max-w-2xl max-h-[92vh] flex flex-col instrument-panel rounded-2xl border border-white/[0.09] shadow-2xl overflow-hidden">
-        
-        {/* Modal Header */}
-        <div className="p-4 sm:p-5 border-b border-white/[0.07] bg-[#12151b] flex items-center justify-between gap-3 shrink-0">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl instrument-well flex items-center justify-center border border-white/[0.05] text-emerald-400">
-              <Plus className="w-5 h-5" />
+      <div className="w-full max-w-xl ti-card rounded-lg p-5 border border-[#C5C3BC] shadow-2xl relative flex flex-col max-h-[92vh] overflow-y-auto text-xs">
+        {/* Header */}
+        <div className="flex items-center justify-between pb-3 border-b border-[#DFDDD6] mb-3">
+          <div className="flex items-center gap-2">
+            <div className="w-7 h-7 rounded ti-well flex items-center justify-center text-[#C66A2B] border border-[#C5C3BC]">
+              <Plus className="w-4 h-4" />
             </div>
             <div>
-              <h3 id="intake-modal-title" className="text-base font-sans font-bold text-slate-100">
-                Provision New Hardware Asset
+              <h3 id="add-modal-title" className="text-sm font-bold text-[#181A1B]">
+                Intake Hardware Asset
               </h3>
-              <p className="text-xs font-sans text-slate-400">
-                Log equipment barcode, serial number, and query Apple specifications
+              <p className="text-[11px] text-[#686B6D]">
+                Register new equipment into SysAssist depot inventory
               </p>
             </div>
           </div>
 
           <button
             onClick={onClose}
-            className="w-8 h-8 rounded-lg instrument-btn flex items-center justify-center text-slate-400 hover:text-white cursor-pointer"
-            aria-label="Close intake modal"
+            className="w-7 h-7 rounded ti-btn flex items-center justify-center text-[#686B6D] hover:text-[#181A1B] cursor-pointer"
+            aria-label="Close dialog"
           >
             <X className="w-4 h-4" />
           </button>
         </div>
 
-        {/* Modal Form Body */}
-        <form onSubmit={handleSubmit} className="p-4 sm:p-6 overflow-y-auto space-y-4">
-          
+        <form onSubmit={handleSubmit} className="space-y-3">
           {/* Quick Apple GSX Serial Lookup */}
-          <div className="p-3.5 rounded-xl instrument-well border border-blue-600/30 space-y-2">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-sans font-semibold text-blue-300 flex items-center gap-1.5">
-                <ShieldCheck className="w-4 h-4 text-blue-400" />
-                Apple GSX Serial Number Auto-Detection (Demo)
-              </span>
-              {appleQueried && (
-                <span className="text-[10px] text-emerald-400 font-sans font-semibold flex items-center gap-1">
-                  <CheckCircle2 className="w-3.5 h-3.5" /> Specs Verified
-                </span>
-              )}
+          <div className="p-2.5 rounded ti-surface border border-[#C5C3BC] flex flex-wrap items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <ShieldCheck className="w-4 h-4 text-[#10B981]" />
+              <div>
+                <span className="text-xs font-semibold text-[#181A1B] block">Apple GSX Entitlement Check</span>
+                <span className="text-[10px] text-[#686B6D]">Auto-populate hardware specs via serial query</span>
+              </div>
             </div>
-            
-            <div className="flex gap-2">
-              <input
-                type="text"
-                value={serialNumber}
-                onChange={(e) => setSerialNumber(e.target.value.toUpperCase())}
-                placeholder="e.g. C02G4190MD6R"
-                className="flex-1 h-9 px-3 instrument-well rounded-lg text-xs font-mono text-slate-100 border border-white/[0.08] focus:border-blue-500 focus:outline-none"
-              />
-              <SkeuoButton
-                type="button"
-                size="sm"
-                variant="primary"
-                disabled={isQueryingApple || !serialNumber}
-                onClick={handleQueryAppleSpecs}
-                icon={<RefreshCw className={`w-3.5 h-3.5 ${isQueryingApple ? 'animate-spin' : ''}`} />}
-              >
-                {isQueryingApple ? 'Querying...' : 'Fetch Specs'}
-              </SkeuoButton>
-            </div>
-            <p className="text-[11px] text-slate-400 font-sans">
-              Enter any Apple serial to auto-populate Processor, RAM, Storage, and model name.
-            </p>
+
+            <SkeuoButton
+              type="button"
+              size="sm"
+              variant="standard"
+              onClick={handleQueryAppleSpecs}
+              disabled={isQueryingApple || !serialNumber}
+              icon={<RefreshCw className={`w-3 h-3 ${isQueryingApple ? 'animate-spin' : ''}`} />}
+            >
+              {isQueryingApple ? 'Querying...' : 'Lookup Serial'}
+            </SkeuoButton>
           </div>
 
+          {appleQueried && (
+            <div className="p-2 rounded bg-[#EBF7EE] border border-[#B7E5C3] text-[11px] text-[#0F682C] flex items-center gap-1.5">
+              <CheckCircle2 className="w-3.5 h-3.5" />
+              <span>Apple GSX verified: {name} ({processor})</span>
+            </div>
+          )}
+
+          {/* Form Fields */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-sans font-semibold text-slate-300 mb-1">
-                Asset Name / Description *
-              </label>
+              <label className="block text-[10px] uppercase text-[#686B6D] mb-1 font-medium">Device Name</label>
               <input
                 type="text"
-                required
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                className="w-full h-9 px-3 instrument-well rounded-lg text-xs font-sans text-slate-100 border border-white/[0.06] focus:border-blue-500 focus:outline-none"
+                required
+                className="w-full h-8 px-2 rounded ti-well text-xs text-[#181A1B] border border-[#C5C3BC] focus:outline-2 focus:outline-[#2C6E9B]"
               />
             </div>
 
             <div>
-              <label className="block text-xs font-sans font-semibold text-slate-300 mb-1">
-                Hardware Category *
-              </label>
+              <label className="block text-[10px] uppercase text-[#686B6D] mb-1 font-medium">Category</label>
               <select
                 value={category}
                 onChange={(e) => setCategory(e.target.value as AssetCategory)}
-                className="w-full h-9 px-3 instrument-btn rounded-lg text-xs font-sans text-slate-200 border border-white/[0.08] focus:border-blue-500 focus:outline-none cursor-pointer"
+                className="w-full h-8 px-2 rounded ti-btn text-xs text-[#181A1B] border border-[#CFCDBF] focus:outline-2 focus:outline-[#2C6E9B]"
               >
-                <option value="Laptop">Laptop / Workstation</option>
-                <option value="Monitor">Monitor / Display</option>
-                <option value="Peripheral">Peripheral / Dock / Input</option>
-                <option value="Storage">Storage / Network Device</option>
+                <option value="Laptop">Laptop</option>
+                <option value="Display">Display / Monitor</option>
+                <option value="Dock">Thunderbolt Dock</option>
+                <option value="Keyboard">Keyboard</option>
+                <option value="Mouse">Mouse</option>
+                <option value="Audio/Headset">Audio / Headset</option>
               </select>
             </div>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div>
-              <label className="block text-xs font-sans font-semibold text-slate-300 mb-1">
-                Manufacturer
-              </label>
+              <label className="block text-[10px] uppercase text-[#686B6D] mb-1 font-medium">Manufacturer</label>
               <input
                 type="text"
-                required
                 value={manufacturer}
                 onChange={(e) => setManufacturer(e.target.value)}
-                className="w-full h-9 px-3 instrument-well rounded-lg text-xs font-sans text-slate-100 border border-white/[0.06] focus:border-blue-500 focus:outline-none"
+                required
+                className="w-full h-8 px-2 rounded ti-well text-xs text-[#181A1B] border border-[#C5C3BC]"
               />
             </div>
-
             <div>
-              <label className="block text-xs font-sans font-semibold text-slate-300 mb-1">
-                Model Identifier
-              </label>
+              <label className="block text-[10px] uppercase text-[#686B6D] mb-1 font-medium">Hardware Model</label>
               <input
                 type="text"
                 value={model}
                 onChange={(e) => setModel(e.target.value)}
-                className="w-full h-9 px-3 instrument-well rounded-lg text-xs font-sans text-slate-100 border border-white/[0.06] focus:border-blue-500 focus:outline-none"
+                required
+                className="w-full h-8 px-2 rounded ti-well text-xs text-[#181A1B] border border-[#C5C3BC]"
+              />
+            </div>
+            <div>
+              <label className="block text-[10px] uppercase text-[#686B6D] mb-1 font-medium">Serial Number</label>
+              <input
+                type="text"
+                value={serialNumber}
+                onChange={(e) => setSerialNumber(e.target.value)}
+                required
+                className="w-full h-8 px-2 rounded ti-well font-mono text-xs text-[#181A1B] border border-[#C5C3BC]"
               />
             </div>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-sans font-semibold text-slate-300 mb-1">
-                Barcode Number
-              </label>
+              <label className="block text-[10px] uppercase text-[#686B6D] mb-1 font-medium">Chassis Barcode</label>
               <input
                 type="text"
                 value={barcode}
                 onChange={(e) => setBarcode(e.target.value)}
-                className="w-full h-9 px-3 instrument-well rounded-lg text-xs font-mono text-slate-100 border border-white/[0.06] focus:border-blue-500 focus:outline-none"
+                required
+                className="w-full h-8 px-2 rounded ti-well font-mono text-xs text-[#181A1B] border border-[#C5C3BC]"
               />
             </div>
-
             <div>
-              <label className="block text-xs font-sans font-semibold text-slate-300 mb-1">
-                Initial Depot Location
-              </label>
+              <label className="block text-[10px] uppercase text-[#686B6D] mb-1 font-medium">Depot Storage Bay</label>
               <input
                 type="text"
                 value={location}
                 onChange={(e) => setLocation(e.target.value)}
-                className="w-full h-9 px-3 instrument-well rounded-lg text-xs font-sans text-slate-100 border border-white/[0.06] focus:border-blue-500 focus:outline-none"
+                required
+                className="w-full h-8 px-2 rounded ti-well text-xs text-[#181A1B] border border-[#C5C3BC]"
               />
             </div>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div>
-              <label className="block text-xs font-sans font-semibold text-slate-300 mb-1">
-                Purchase Price (USD)
-              </label>
-              <input
-                type="number"
-                step="0.01"
-                value={purchasePrice}
-                onChange={(e) => setPurchasePrice(parseFloat(e.target.value) || 0)}
-                className="w-full h-9 px-3 instrument-well rounded-lg text-xs font-mono text-slate-100 border border-white/[0.06] focus:border-blue-500 focus:outline-none"
-              />
-            </div>
-
-            <div>
-              <label className="block text-xs font-sans font-semibold text-slate-300 mb-1">
-                Supplier / Channel
-              </label>
-              <input
-                type="text"
-                value={supplier}
-                onChange={(e) => setSupplier(e.target.value)}
-                className="w-full h-9 px-3 instrument-well rounded-lg text-xs font-sans text-slate-100 border border-white/[0.06] focus:border-blue-500 focus:outline-none"
-              />
-            </div>
-          </div>
-
-          {/* Specifications Breakdown */}
-          <div className="p-3.5 rounded-xl instrument-card space-y-3">
-            <h4 className="text-xs font-sans font-bold uppercase tracking-wider text-slate-200">
-              Technical Hardware Specifications
-            </h4>
-
-            <div className="space-y-2">
+          <div className="p-2.5 rounded ti-surface border border-[#C5C3BC] space-y-2">
+            <span className="text-[10px] uppercase text-[#686B6D] font-bold block">Detailed Technical Specs</span>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
               <div>
-                <label className="block text-[11px] font-sans text-slate-400 mb-1">Processor / SoC</label>
+                <label className="block text-[9px] uppercase text-[#686B6D] mb-0.5">CPU / SoC</label>
                 <input
                   type="text"
                   value={processor}
                   onChange={(e) => setProcessor(e.target.value)}
-                  className="w-full h-8 px-2.5 instrument-well rounded-lg text-xs font-sans text-slate-100 border border-white/[0.06] focus:border-blue-500 focus:outline-none"
+                  className="w-full h-7.5 px-2 rounded ti-well text-xs text-[#181A1B] border border-[#C5C3BC]"
                 />
               </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                <div>
-                  <label className="block text-[11px] font-sans text-slate-400 mb-1">Memory (RAM)</label>
-                  <input
-                    type="text"
-                    value={ram}
-                    onChange={(e) => setRam(e.target.value)}
-                    className="w-full h-8 px-2.5 instrument-well rounded-lg text-xs font-mono text-slate-100 border border-white/[0.06] focus:border-blue-500 focus:outline-none"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-[11px] font-sans text-slate-400 mb-1">Storage (SSD / NVMe)</label>
-                  <input
-                    type="text"
-                    value={storage}
-                    onChange={(e) => setStorage(e.target.value)}
-                    className="w-full h-8 px-2.5 instrument-well rounded-lg text-xs font-mono text-slate-100 border border-white/[0.06] focus:border-blue-500 focus:outline-none"
-                  />
-                </div>
+              <div>
+                <label className="block text-[9px] uppercase text-[#686B6D] mb-0.5">RAM</label>
+                <input
+                  type="text"
+                  value={ram}
+                  onChange={(e) => setRam(e.target.value)}
+                  className="w-full h-7.5 px-2 rounded ti-well text-xs text-[#181A1B] border border-[#C5C3BC]"
+                />
+              </div>
+              <div>
+                <label className="block text-[9px] uppercase text-[#686B6D] mb-0.5">Storage SSD</label>
+                <input
+                  type="text"
+                  value={storage}
+                  onChange={(e) => setStorage(e.target.value)}
+                  className="w-full h-7.5 px-2 rounded ti-well text-xs text-[#181A1B] border border-[#C5C3BC]"
+                />
               </div>
             </div>
           </div>
 
-          {/* Modal Actions */}
-          <div className="flex items-center justify-end gap-2 pt-3 border-t border-white/[0.06]">
-            <SkeuoButton
-              type="button"
-              variant="subtle"
-              onClick={onClose}
-            >
+          <div className="flex items-center justify-end gap-2 pt-2 border-t border-[#DFDDD6]">
+            <SkeuoButton size="sm" variant="subtle" type="button" onClick={onClose}>
               Cancel
             </SkeuoButton>
-
-            <SkeuoButton
-              type="submit"
-              variant="primary"
-              icon={<Plus className="w-3.5 h-3.5" />}
-            >
-              Provision into Stock
+            <SkeuoButton size="sm" variant="primary" type="submit">
+              Register Hardware Asset
             </SkeuoButton>
           </div>
         </form>
