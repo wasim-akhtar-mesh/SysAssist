@@ -92,12 +92,16 @@ export interface ChangeLogEntry {
     | 'CHECK_IN' 
     | 'CHECK_OUT' 
     | 'WARRANTY_SYNC' 
-    | 'CREATED';
+    | 'CREATED'
+    | 'PROCUREMENT_LINK'
+    | 'PROCUREMENT_FULFILL'
+    | 'PROCUREMENT_OVERRIDE';
   property: string;
   oldValue: string;
   newValue: string;
   reason?: string;
   jiraTicketKey?: string;
+  procurementRequestNumber?: string;
 }
 
 export interface Asset {
@@ -119,6 +123,8 @@ export interface Asset {
   specs: HardwareSpecs;
   appleCoverage?: AppleCoverage;
   linkedJiraKey?: string;
+  linkedProcurementId?: string;
+  purchaseOrderNumber?: string;
   notes?: string;
   changeLogs: ChangeLogEntry[];
 }
@@ -159,3 +165,136 @@ export interface UserSession {
   role: string;
   department: string;
 }
+
+// ---------------------------------------------------------------------------
+// Procurement Module Types
+// ---------------------------------------------------------------------------
+
+export type ProcurementStatus =
+  | 'Draft'
+  | 'Submitted'
+  | 'IT Head Review'
+  | 'Finance Review'
+  | 'Purchasing Queue'
+  | 'Ordered'
+  | 'Shipped'
+  | 'Partially Received'
+  | 'Received'
+  | 'Asset Registration'
+  | 'Assigned/Fulfilled'
+  | 'Closed'
+  | 'Changes Requested'
+  | 'Rejected'
+  | 'Cancelled';
+
+export type ProcurementRole = 
+  | 'requester' 
+  | 'it_head' 
+  | 'finance' 
+  | 'purchasing' 
+  | 'purchasing_buyer'
+  | 'asset_manager';
+
+export type ProcurementViewType = 'my_requests' | 'awaiting_approval' | 'purchasing_queue' | 'all_requests';
+
+export interface SimulatedUserRole {
+  id: ProcurementRole;
+  name: string;
+  email: string;
+  title?: string;
+  department: string;
+  badge: string;
+  description?: string;
+}
+
+export type ProcurementUrgency = 'Standard' | 'Urgent' | 'Critical';
+export type ProcurementRequestType = 'New Equipment' | 'Replacement';
+
+export interface ApprovalDecision {
+  id: string;
+  stage?: 'IT Head Review' | 'Finance Review';
+  level?: string;
+  approverName: string;
+  approverRole?: string;
+  approverEmail?: string;
+  decision: 'Approved' | 'Rejected' | 'Changes Requested';
+  timestamp: string;
+  reason?: string;
+}
+
+export interface PurchaseOrderInfo {
+  poNumber: string;
+  vendor: string;
+  finalUnitPrice: number;
+  quantity: number;
+  currency: string;
+  orderDate: string;
+  expectedDeliveryDate: string;
+  trackingReference?: string;
+  purchasingNotes?: string;
+  finalTotalCost: number;
+}
+
+export interface DeliveryReceipt {
+  id: string;
+  quantityReceived: number;
+  receiptDate: string;
+  receiver: string;
+  deliveryReference: string;
+  notes?: string;
+}
+
+export interface ProcurementAuditLog {
+  id: string;
+  timestamp: string;
+  actor: string;
+  role: string;
+  requestNumber: string;
+  action: string;
+  previousState: string;
+  newState: string;
+  notes?: string;
+}
+
+export interface ProcurementRequest {
+  id: string;
+  requestNumber: string; // e.g. "PR-2026-0001"
+  status: ProcurementStatus;
+  requester: {
+    name: string;
+    email: string;
+    department: string;
+  };
+  department: string;
+  manager: string;
+  costCentre: string;
+  category: AssetCategory;
+  preferredModel: string;
+  quantity: number;
+  businessJustification: string;
+  requestType: ProcurementRequestType;
+  requiredByDate: string;
+  urgency: ProcurementUrgency;
+  estimatedUnitPrice: number;
+  currency: string;
+  estimatedTotalCost: number;
+  preferredVendor: string;
+  vendorQuoteReference?: string;
+  replacementAssetTag?: string;
+  additionalNotes?: string;
+  createdAt: string;
+  updatedAt: string;
+  approvals: ApprovalDecision[];
+  purchaseOrder?: PurchaseOrderInfo;
+  receipts: DeliveryReceipt[];
+  totalReceivedQuantity: number;
+  registeredAssetTags: string[];
+  fulfilledAssetTags: string[];
+  stockFulfilled?: boolean;
+  overrideStockMismatch?: boolean;
+  rejectionReason?: string;
+  changesRequestedReason?: string;
+  financeApprovedAmount?: number;
+  auditLogs: ProcurementAuditLog[];
+}
+

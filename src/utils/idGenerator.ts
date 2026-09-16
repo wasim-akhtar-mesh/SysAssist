@@ -110,3 +110,67 @@ export function generateUniqueLogId(existingLogs: Pick<ChangeLogEntry, 'id'>[] =
 
   return candidate;
 }
+
+/**
+ * Generate a collision-safe Procurement Request Number (e.g. PR-2026-0001).
+ */
+export function generateUniqueProcurementNumber(existingRequests: { requestNumber: string }[] = []): string {
+  const year = new Date().getFullYear();
+  const existingNumbers = new Set(existingRequests.map(r => r.requestNumber.toUpperCase()));
+
+  let maxNum = 0;
+  const regex = new RegExp(`^PR-${year}-(\\d+)`, 'i');
+  for (const r of existingRequests) {
+    const match = r.requestNumber.match(regex);
+    if (match) {
+      const val = parseInt(match[1], 10);
+      if (!isNaN(val) && val > maxNum) {
+        maxNum = val;
+      }
+    }
+  }
+
+  let candidateNum = maxNum + 1;
+  let candidate = `PR-${year}-${candidateNum.toString().padStart(4, '0')}`;
+  while (existingNumbers.has(candidate.toUpperCase())) {
+    candidateNum++;
+    candidate = `PR-${year}-${candidateNum.toString().padStart(4, '0')}`;
+  }
+
+  return candidate;
+}
+
+/**
+ * Generate a collision-safe Purchase Order Number (e.g. PO-2026-0101).
+ */
+export function generateUniquePONumber(existingRequests: { purchaseOrder?: { poNumber: string } }[] = []): string {
+  const year = new Date().getFullYear();
+  const existingPOs = new Set<string>();
+  existingRequests.forEach(r => {
+    if (r.purchaseOrder?.poNumber) {
+      existingPOs.add(r.purchaseOrder.poNumber.toUpperCase());
+    }
+  });
+
+  let maxNum = 100;
+  const regex = new RegExp(`^PO-${year}-(\\d+)`, 'i');
+  existingPOs.forEach(po => {
+    const match = po.match(regex);
+    if (match) {
+      const val = parseInt(match[1], 10);
+      if (!isNaN(val) && val > maxNum) {
+        maxNum = val;
+      }
+    }
+  });
+
+  let candidateNum = maxNum + 1;
+  let candidate = `PO-${year}-${candidateNum.toString().padStart(4, '0')}`;
+  while (existingPOs.has(candidate.toUpperCase())) {
+    candidateNum++;
+    candidate = `PO-${year}-${candidateNum.toString().padStart(4, '0')}`;
+  }
+
+  return candidate;
+}
+

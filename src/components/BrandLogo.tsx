@@ -10,21 +10,19 @@ interface BrandLogoProps {
 }
 
 /**
- * SysAssist Precision Instrument Brand Mark
+ * System Assist Precision Instrument Brand Mark
  * 
- * Architecture: "The Tag-Node Monogram"
+ * Architecture: "The Tag-Node Monogram" (SA Monogram)
  * Palette: Titanium & Ink (Deep Graphite #151719 & Restrained Burnt Orange #C66A2B)
  * Silhouette: Precision asset-tag chamfer with calibrated circular node apertures
  * and an architectural 'S' circuit path.
  * Crisp, flat, recognizable down to 16px.
  */
-export const SysAssistSymbol: React.FC<{
+export const SystemAssistSymbol: React.FC<{
   size?: number;
   variant?: 'accent' | 'monochrome' | 'muted' | 'light';
   className?: string;
 }> = ({ size = 28, variant = 'accent', className = '' }) => {
-  const isLightOnDark = variant === 'accent' || variant === 'monochrome';
-
   return (
     <svg
       width={size}
@@ -33,7 +31,7 @@ export const SysAssistSymbol: React.FC<{
       fill="none"
       xmlns="http://www.w3.org/2000/svg"
       role="img"
-      aria-label="SysAssist Precision Tag-Node Monogram"
+      aria-label="System Assist Precision Tag-Node Monogram"
       className={`shrink-0 ${className}`}
     >
       {/* Outer Calibrated Instrument Housing Bezel */}
@@ -93,45 +91,51 @@ export const SysAssistSymbol: React.FC<{
   );
 };
 
+// Backward-compatible alias
+export const SysAssistSymbol = SystemAssistSymbol;
+
 /**
  * Rail Header Lockup (Used in Desktop Navigation Rail)
  */
-export const SysAssistRailLockup: React.FC<{
+export const SystemAssistRailLockup: React.FC<{
   collapsed?: boolean;
   className?: string;
 }> = ({ collapsed = false, className = '' }) => {
   if (collapsed) {
     return (
-      <div className={`flex items-center justify-center p-2 ${className}`} title="SysAssist IT Workstation">
-        <SysAssistSymbol size={28} variant="accent" />
+      <div className={`flex items-center justify-center p-2 ${className}`} title="System Assist IT Workstation">
+        <SystemAssistSymbol size={28} variant="accent" />
       </div>
     );
   }
 
   return (
     <div className={`flex items-center gap-2.5 px-3 py-2 select-none ${className}`}>
-      <SysAssistSymbol size={30} variant="accent" />
+      <SystemAssistSymbol size={30} variant="accent" />
       <div className="flex flex-col justify-center min-w-0">
         <div className="flex items-center gap-1.5">
-          <span className="font-sans font-bold tracking-[0.14em] text-[#FAF9F5] text-sm leading-none">
-            SYSASSIST
+          <span className="font-sans font-bold tracking-[0.12em] text-[#FAF9F5] text-sm leading-none whitespace-nowrap">
+            SYSTEM ASSIST
           </span>
-          <span className="text-[9px] font-sans font-semibold tracking-wide px-1 py-0.5 rounded bg-[#C66A2B]/20 text-[#E08544] border border-[#C66A2B]/40 leading-none">
-            v2.6
+          <span className="text-[9px] font-sans font-semibold tracking-wide px-1 py-0.5 rounded bg-[#C66A2B]/20 text-[#E08544] border border-[#C66A2B]/40 leading-none shrink-0">
+            v3.0
           </span>
         </div>
         <span className="text-[10px] font-sans text-[#8C8F92] mt-1 leading-none truncate">
-          Hardware Operations Workstation
+          Hardware & Procurement Operations
         </span>
       </div>
     </div>
   );
 };
 
+// Backward-compatible alias
+export const SysAssistRailLockup = SystemAssistRailLockup;
+
 /**
  * Horizontal Wordmark Lockup
  */
-export const SysAssistWordmark: React.FC<BrandLogoProps> = ({
+export const SystemAssistWordmark: React.FC<BrandLogoProps> = ({
   size = 'md',
   variant = 'accent',
   className = '',
@@ -141,22 +145,25 @@ export const SysAssistWordmark: React.FC<BrandLogoProps> = ({
 
   return (
     <div className={`flex items-center gap-2.5 select-none ${className}`}>
-      <SysAssistSymbol size={pixelSize} variant={variant} />
+      <SystemAssistSymbol size={pixelSize} variant={variant} />
       <div className="flex flex-col justify-center">
         <div className="flex items-center gap-1.5">
-          <span className="font-sans font-bold tracking-[0.14em] text-[#FAF9F5] text-sm leading-none">
-            SYSASSIST
+          <span className="font-sans font-bold tracking-[0.12em] text-[#FAF9F5] text-sm leading-none whitespace-nowrap">
+            SYSTEM ASSIST
           </span>
-          <span className="text-[9px] font-sans font-semibold tracking-wider px-1 py-0.5 rounded bg-[#C66A2B]/20 text-[#E08544] border border-[#C66A2B]/40 leading-none uppercase">
+          <span className="text-[9px] font-sans font-semibold tracking-wider px-1 py-0.5 rounded bg-[#C66A2B]/20 text-[#E08544] border border-[#C66A2B]/40 leading-none uppercase shrink-0">
             OPERATIONS
           </span>
         </div>
         {tagline && (
           <span className="text-[10px] font-sans text-[#8C8F92] mt-0.5 leading-none">
-            Precision IT Fleet Instrumentation
+            Precision IT Fleet & Procurement Instrumentation
           </span>
         )}
       </div>
     </div>
   );
 };
+
+// Backward-compatible alias
+export const SysAssistWordmark = SystemAssistWordmark;

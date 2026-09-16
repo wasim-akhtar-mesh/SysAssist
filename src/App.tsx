@@ -4,10 +4,14 @@ import {
   AssetCategory,
   AssetStatus,
   ChangeLogEntry, 
-  JiraTicket 
+  JiraTicket,
+  ProcurementRequest,
+  ProcurementViewType,
+  SimulatedUserRole
 } from './types';
 import { INITIAL_ASSETS, INITIAL_CHANGE_LOGS } from './data/mockAssets';
 import { INITIAL_JIRA_TICKETS, INVENTORY_THRESHOLDS } from './data/mockJira';
+import { INITIAL_PROCUREMENT_REQUESTS } from './data/mockProcurement';
 import { NavigationRail, ActiveTab } from './components/NavigationRail';
 import { UtilityBar } from './components/UtilityBar';
 import { DashboardView } from './components/DashboardView';
@@ -18,49 +22,85 @@ import { AuditTrailView } from './components/AuditTrailView';
 import { AssetDetailModal } from './components/AssetDetailModal';
 import { BarcodeScannerModal } from './components/BarcodeScannerModal';
 import { AddAssetModal } from './components/AddAssetModal';
+import { ProcurementView } from './components/ProcurementView';
 import { 
   getCategoryStockAssessments, 
   PERIPHERAL_CATEGORIES 
 } from './utils/inventorySelectors';
-import { generateUniqueJiraKey } from './utils/idGenerator';
+import { generateUniqueJiraKey, generateUniqueProcurementNumber } from './utils/idGenerator';
+import { 
+  runSystemAssistStorageMigration, 
+  STORAGE_KEYS, 
+  getMigratedStorageItem, 
+  setMigratedStorageItem 
+} from './utils/storageMigration';
 
-const CURRENT_USER = 'Wasim Akhtar (IT Lead)';
+export const DEFAULT_ROLES: SimulatedUserRole[] = [
+  {
+    id: 'it_head',
+    name: 'Wasim Akhtar',
+    email: 'wasim.akhtar@meshconnect.internal',
+    department: 'Hardware Operations',
+    badge: 'IT Lead',
+    description: 'IT Operations Head & Fleet Custodian'
+  },
+  {
+    id: 'requester',
+    name: 'Elena Rostova',
+    email: 'elena.rostova@meshconnect.internal',
+    department: 'Engineering Infrastructure',
+    badge: 'Requester',
+    description: 'Staff Engineer & Hardware Requester'
+  },
+  {
+    id: 'finance',
+    name: 'Marcus Vance',
+    email: 'marcus.vance@meshconnect.internal',
+    department: 'Finance & Budget',
+    badge: 'Finance Controller',
+    description: 'Financial Controller & Budget Authority'
+  },
+  {
+    id: 'purchasing_buyer',
+    name: 'Diana Sterling',
+    email: 'diana.sterling@meshconnect.internal',
+    department: 'Procurement & Vendor Ops',
+    badge: 'Purchasing Buyer',
+    description: 'Procurement Specialist & Vendor PO Issuer'
+  }
+];
 
 export default function App() {
-  // Load persistent state from localStorage or initial dataset
+  // Execute safe one-time storage key migration on startup
+  useEffect(() => {
+    runSystemAssistStorageMigration();
+  }, []);
+
+  // Active Simulated User Role
+  const [activeRole, setActiveRole] = useState<SimulatedUserRole>(() => {
+    return getMigratedStorageItem<SimulatedUserRole>(STORAGE_KEYS.ACTIVE_ROLE, DEFAULT_ROLES[0]);
+  });
+
+  const currentUserDisplay = `${activeRole.name} (${activeRole.badge})`;
+
+  // Load persistent state with migration fallback
   const [assets, setAssets] = useState<Asset[]>(() => {
-    try {
-      const saved = localStorage.getItem('sysassist_assets');
-      if (saved) {
-        return JSON.parse(saved);
-      }
-    } catch {
-      // fallback
-    }
-    return INITIAL_ASSETS;
+    return getMigratedStorageItem<Asset[]>(STORAGE_KEYS.ASSETS, INITIAL_ASSETS);
   });
 
   const [jiraTickets, setJiraTickets] = useState<JiraTicket[]>(() => {
-    try {
-      const saved = localStorage.getItem('sysassist_jira');
-      if (saved) {
-        return JSON.parse(saved);
-      }
-    } catch {
-      // fallback
-    }
-    return INITIAL_JIRA_TICKETS;
+    return getMigratedStorageItem<JiraTicket[]>(STORAGE_KEYS.JIRA, INITIAL_JIRA_TICKETS);
+  });
+
+  const [procurementRequests, setProcurementRequests] = useState<ProcurementRequest[]>(() => {
+    return getMigratedStorageItem<ProcurementRequest[]>(STORAGE_KEYS.PROCUREMENT, INITIAL_PROCUREMENT_REQUESTS);
   });
 
   // Global change log entries aggregated and sorted
   const [allChangeLogs, setAllChangeLogs] = useState<ChangeLogEntry[]>(() => {
-    try {
-      const saved = localStorage.getItem('sysassist_logs');
-      if (saved) {
-        return JSON.parse(saved);
-      }
-    } catch {
-      // fallback
+    const saved = getMigratedStorageItem<ChangeLogEntry[] | null>(STORAGE_KEYS.LOGS, null);
+    if (saved && Array.isArray(saved)) {
+      return saved;
     }
     const aggregated = [...INITIAL_CHANGE_LOGS];
     INITIAL_ASSETS.forEach(a => {
@@ -73,35 +113,33 @@ export default function App() {
     return aggregated.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
   });
 
-  // Sync to localStorage
+  // Sync to localStorage with dual-key persistence
   useEffect(() => {
-    try {
-      localStorage.setItem('sysassist_assets', JSON.stringify(assets));
-    } catch {
-      // ignore
-    }
+    setMigratedStorageItem(STORAGE_KEYS.ASSETS, assets);
   }, [assets]);
 
   useEffect(() => {
-    try {
-      localStorage.setItem('sysassist_jira', JSON.stringify(jiraTickets));
-    } catch {
-      // ignore
-    }
+    setMigratedStorageItem(STORAGE_KEYS.JIRA, jiraTickets);
   }, [jiraTickets]);
 
   useEffect(() => {
-    try {
-      localStorage.setItem('sysassist_logs', JSON.stringify(allChangeLogs));
-    } catch {
-      // ignore
-    }
+    setMigratedStorageItem(STORAGE_KEYS.LOGS, allChangeLogs);
   }, [allChangeLogs]);
+
+  useEffect(() => {
+    setMigratedStorageItem(STORAGE_KEYS.PROCUREMENT, procurementRequests);
+  }, [procurementRequests]);
+
+  useEffect(() => {
+    setMigratedStorageItem(STORAGE_KEYS.ACTIVE_ROLE, activeRole);
+  }, [activeRole]);
 
   // UI Navigation state - Initialize on dashboard
   const [activeTab, setActiveTab] = useState<ActiveTab>('dashboard');
   const [laptopStatusFilter, setLaptopStatusFilter] = useState<AssetStatus | 'ALL'>('ALL');
   const [peripheralCategoryFilter, setPeripheralCategoryFilter] = useState<AssetCategory | 'ALL'>('ALL');
+  const [procurementInitialView, setProcurementInitialView] = useState<ProcurementViewType>('all_requests');
+  const [procurementInitialStatusFilter, setProcurementInitialStatusFilter] = useState<string>('ALL');
 
   const [selectedAsset, setSelectedAsset] = useState<Asset | null>(null);
   const [isScannerOpen, setIsScannerOpen] = useState<boolean>(false);
@@ -128,6 +166,20 @@ export default function App() {
   const peripheralCount = useMemo(() => {
     return assets.filter(a => (PERIPHERAL_CATEGORIES as readonly string[]).includes(a.category)).length;
   }, [assets]);
+
+  // Active role pending procurement approvals count
+  const procurementPendingCount = useMemo(() => {
+    const roleEmail = activeRole.email.toLowerCase();
+    return procurementRequests.filter(r => {
+      if (activeRole.id === 'it_head' && r.status === 'IT Head Review') {
+        return r.requester.email.toLowerCase() !== roleEmail;
+      }
+      if (activeRole.id === 'finance' && r.status === 'Finance Review') {
+        return r.requester.email.toLowerCase() !== roleEmail;
+      }
+      return false;
+    }).length;
+  }, [procurementRequests, activeRole]);
 
   // Handlers
   const handleUpdateAsset = (updatedAsset: Asset, newLog: ChangeLogEntry) => {
@@ -156,13 +208,9 @@ export default function App() {
         return {
           ...a,
           status: 'In Use',
-          assignedTo: {
-            name: targetTicket.requester.name,
-            email: targetTicket.requester.email,
-            department: targetTicket.requester.department,
-            assignedDate: new Date().toISOString().slice(0, 10),
-            role: 'Hardware Requester'
-          },
+          assignedTo: targetTicket.requester.name,
+          assignedEmail: targetTicket.requester.email,
+          assignedDepartment: targetTicket.requester.department,
           linkedJiraKey: ticketKey,
           changeLogs: [log, ...(a.changeLogs || [])]
         };
@@ -185,29 +233,62 @@ export default function App() {
     setAllChangeLogs(prev => [log, ...prev]);
   };
 
+  // Connect Stock & Procurement "Draft PO" action to create a real System Assist procurement request
   const handleDraftProcurementTicket = (item: { category: string; modelName: string; quantityToOrder: number }) => {
-    const nextKey = generateUniqueJiraKey(jiraTickets);
+    const nextPRNumber = generateUniqueProcurementNumber(procurementRequests);
     const now = new Date().toISOString();
-    const newTicket: JiraTicket = {
-      key: nextKey,
-      summary: `Automated PO: Restock ${item.quantityToOrder}x ${item.modelName}`,
-      description: `Automated inventory alert triggered by SysAssist buffer quota. Category ${item.category} has reached critical minimum reserves. Please generate purchase order and dispatch to preferred enterprise supplier.`,
-      issueType: 'Hardware Request',
-      status: 'Open',
-      priority: 'High',
+    const unitPrice = item.category === 'Laptop' ? 2499 : item.category === 'Display' ? 1299 : item.category === 'Dock' ? 349 : 149;
+    const vendor = item.category === 'Laptop' ? 'Apple Enterprise Direct' : item.category === 'Display' ? 'Dell Enterprise Direct' : 'CalDigit Enterprise';
+
+    const newPR: ProcurementRequest = {
+      id: `pr-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+      requestNumber: nextPRNumber,
+      status: 'IT Head Review',
+      requester: {
+        name: activeRole.name,
+        email: activeRole.email,
+        department: activeRole.department
+      },
+      department: activeRole.department,
+      manager: 'Hardware Operations Lead',
+      costCentre: 'CC-OPS-5501',
+      category: item.category as AssetCategory,
+      preferredModel: item.modelName,
+      quantity: item.quantityToOrder,
+      businessJustification: `Automated inventory replenishment triggered by System Assist buffer quota threshold for ${item.category} (${item.modelName}).`,
+      requestType: 'New Equipment',
+      requiredByDate: new Date(Date.now() + 10 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10),
+      urgency: 'Urgent',
+      estimatedUnitPrice: unitPrice,
+      currency: 'USD',
+      estimatedTotalCost: unitPrice * item.quantityToOrder,
+      preferredVendor: vendor,
       createdAt: now,
       updatedAt: now,
-      requester: {
-        name: CURRENT_USER,
-        email: 'wasim.akhtar@meshconnect.internal',
-        department: 'Hardware Operations'
-      },
-      requestedHardware: `${item.quantityToOrder}x ${item.modelName}`,
-      requestedCategory: item.category as AssetCategory
+      approvals: [],
+      receipts: [],
+      totalReceivedQuantity: 0,
+      registeredAssetTags: [],
+      fulfilledAssetTags: [],
+      auditLogs: [
+        {
+          id: `audit-${Date.now()}`,
+          timestamp: now,
+          actor: activeRole.name,
+          role: activeRole.badge,
+          requestNumber: nextPRNumber,
+          action: 'Automated Stock Request Drafted',
+          previousState: 'Draft',
+          newState: 'IT Head Review',
+          notes: `Automated replenishment for ${item.quantityToOrder}x ${item.modelName} created from Stock & Procurement quota analysis.`
+        }
+      ]
     };
 
-    setJiraTickets(prev => [newTicket, ...prev]);
-    setActiveTab('jira');
+    setProcurementRequests(prev => [newPR, ...prev]);
+    setProcurementInitialView('all_requests');
+    setProcurementInitialStatusFilter('ALL');
+    setActiveTab('procurement');
   };
 
   const handleSelectAssetByTag = (tag: string) => {
@@ -233,6 +314,64 @@ export default function App() {
     setActiveTab('peripherals');
   };
 
+  const handleNavigateToProcurement = (view?: ProcurementViewType, statusFilter?: string) => {
+    setProcurementInitialView(view || 'all_requests');
+    setProcurementInitialStatusFilter(statusFilter || 'ALL');
+    setActiveTab('procurement');
+  };
+
+  // Procurement state transitions
+  const handleSaveProcurementDraft = (request: ProcurementRequest) => {
+    setProcurementRequests(prev => {
+      const exists = prev.some(r => r.id === request.id);
+      if (exists) {
+        return prev.map(r => r.id === request.id ? request : r);
+      }
+      return [request, ...prev];
+    });
+  };
+
+  const handleSubmitProcurementRequest = (request: ProcurementRequest) => {
+    setProcurementRequests(prev => {
+      const exists = prev.some(r => r.id === request.id);
+      if (exists) {
+        return prev.map(r => r.id === request.id ? request : r);
+      }
+      return [request, ...prev];
+    });
+  };
+
+  const handleUpdateProcurementRequest = (request: ProcurementRequest, updatedAsset?: Asset) => {
+    setProcurementRequests(prev => prev.map(r => r.id === request.id ? request : r));
+    if (updatedAsset) {
+      setAssets(prev => prev.map(a => a.id === updatedAsset.id ? updatedAsset : a));
+    }
+  };
+
+  const handleRegisterFleetAssets = (request: ProcurementRequest, createdAssets: Asset[]) => {
+    setProcurementRequests(prev => prev.map(r => r.id === request.id ? request : r));
+    setAssets(prev => [...createdAssets, ...prev]);
+
+    // Create audit log entries for enrolled assets
+    const now = new Date().toISOString();
+    const newLogs: ChangeLogEntry[] = createdAssets.map((asset, i) => ({
+      id: `log-reg-${Date.now()}-${i}`,
+      assetId: asset.id,
+      assetTag: asset.assetTag,
+      assetName: asset.name,
+      timestamp: now,
+      performedBy: activeRole.name,
+      action: 'CREATED',
+      property: 'status',
+      oldValue: 'None',
+      newValue: asset.status,
+      reason: `Registered from procurement request ${request.requestNumber} (PO: ${request.purchaseOrder?.poNumber || 'N/A'}).`,
+      procurementRequestNumber: request.requestNumber
+    }));
+
+    setAllChangeLogs(prev => [...newLogs, ...prev]);
+  };
+
   return (
     <div className="flex h-screen w-screen overflow-hidden bg-[#D8D7D2] text-[#181A1B] font-sans antialiased select-auto selection:bg-[#C66A2B] selection:text-white">
       
@@ -249,8 +388,9 @@ export default function App() {
         peripheralCount={peripheralCount}
         openJiraCount={openJiraCount}
         lowStockCount={lowStockCount}
+        procurementPendingCount={procurementPendingCount}
         totalAssetsCount={assets.length}
-        currentUser={CURRENT_USER}
+        currentUser={currentUserDisplay}
         isCollapsed={isRailCollapsed}
         onToggleCollapse={() => setIsRailCollapsed(!isRailCollapsed)}
         isMobileOpen={isMobileRailOpen}
@@ -272,7 +412,11 @@ export default function App() {
           totalAssetsCount={assets.length}
           openJiraCount={openJiraCount}
           lowStockCount={lowStockCount}
-          currentUser={CURRENT_USER}
+          procurementPendingCount={procurementPendingCount}
+          currentUser={currentUserDisplay}
+          activeRole={activeRole}
+          onSelectRole={(role) => setActiveRole(role)}
+          availableRoles={DEFAULT_ROLES}
         />
 
         {/* Scrollable Main Workspace Content */}
@@ -285,11 +429,14 @@ export default function App() {
               jiraTickets={jiraTickets}
               changeLogs={allChangeLogs}
               thresholds={INVENTORY_THRESHOLDS}
+              procurementRequests={procurementRequests}
+              currentUserRole={activeRole}
               onNavigateToLaptops={handleNavigateToLaptops}
               onNavigateToPeripherals={handleNavigateToPeripherals}
               onNavigateToStock={() => setActiveTab('stock_tracker')}
               onNavigateToJira={() => setActiveTab('jira')}
               onNavigateToAudit={() => setActiveTab('audit_trail')}
+              onNavigateToProcurement={handleNavigateToProcurement}
               onSelectAssetByTag={handleSelectAssetByTag}
               onOpenScanner={() => setIsScannerOpen(true)}
               onOpenAddAsset={() => {
@@ -329,7 +476,22 @@ export default function App() {
             />
           )}
 
-          {/* TAB 4: STOCK & PROCUREMENT */}
+          {/* TAB 4: PROCUREMENT CONSOLE */}
+          {activeTab === 'procurement' && (
+            <ProcurementView
+              requests={procurementRequests}
+              assets={assets}
+              currentUserRole={activeRole}
+              initialView={procurementInitialView}
+              initialStatusFilter={procurementInitialStatusFilter}
+              onSaveDraft={handleSaveProcurementDraft}
+              onSubmitRequest={handleSubmitProcurementRequest}
+              onUpdateRequest={handleUpdateProcurementRequest}
+              onRegisterFleetAssets={handleRegisterFleetAssets}
+            />
+          )}
+
+          {/* TAB 5: STOCK & PROCUREMENT */}
           {activeTab === 'stock_tracker' && (
             <AutomatedInventoryTracker
               assets={assets}
@@ -339,19 +501,19 @@ export default function App() {
             />
           )}
 
-          {/* TAB 5: JIRA REQUESTS */}
+          {/* TAB 6: JIRA REQUESTS */}
           {activeTab === 'jira' && (
             <JiraTicketingDrawer
               tickets={jiraTickets}
               assets={assets}
               onCreateTicket={handleCreateJiraTicket}
               onFulfillTicket={handleFulfillJiraTicket}
-              currentUser={CURRENT_USER}
+              currentUser={currentUserDisplay}
               onSelectAssetByTag={handleSelectAssetByTag}
             />
           )}
 
-          {/* TAB 6: AUDIT TRAIL */}
+          {/* TAB 7: AUDIT TRAIL */}
           {activeTab === 'audit_trail' && (
             <AuditTrailView
               changeLogs={allChangeLogs}
@@ -368,7 +530,7 @@ export default function App() {
           isOpen={true}
           onClose={() => setSelectedAsset(null)}
           onUpdateAsset={handleUpdateAsset}
-          currentUser={CURRENT_USER}
+          currentUser={currentUserDisplay}
           jiraTickets={jiraTickets}
         />
       )}
@@ -391,10 +553,11 @@ export default function App() {
         }}
         onAddAsset={handleAddAsset}
         initialBarcode={scannerInitialBarcode}
-        currentUser={CURRENT_USER}
+        currentUser={currentUserDisplay}
         existingAssets={assets}
       />
 
     </div>
   );
 }
+

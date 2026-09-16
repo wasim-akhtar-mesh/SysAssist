@@ -11,12 +11,13 @@ import {
   User, 
   ChevronLeft, 
   ChevronRight,
-  X
+  X,
+  FileCheck2
 } from 'lucide-react';
-import { SysAssistRailLockup } from './BrandLogo';
+import { SystemAssistRailLockup } from './BrandLogo';
 import { LedIndicator } from './SkeuoComponents';
 
-export type ActiveTab = 'dashboard' | 'laptops' | 'peripherals' | 'stock_tracker' | 'jira' | 'audit_trail';
+export type ActiveTab = 'dashboard' | 'laptops' | 'peripherals' | 'stock_tracker' | 'procurement' | 'jira' | 'audit_trail';
 
 interface NavigationRailProps {
   activeTab: ActiveTab;
@@ -27,6 +28,7 @@ interface NavigationRailProps {
   peripheralCount: number;
   openJiraCount: number;
   lowStockCount: number;
+  procurementPendingCount?: number;
   totalAssetsCount: number;
   currentUser: string;
   isCollapsed: boolean;
@@ -44,6 +46,7 @@ export const NavigationRail: React.FC<NavigationRailProps> = ({
   peripheralCount,
   openJiraCount,
   lowStockCount,
+  procurementPendingCount = 0,
   totalAssetsCount,
   currentUser,
   isCollapsed,
@@ -73,8 +76,16 @@ export const NavigationRail: React.FC<NavigationRailProps> = ({
       icon: <Monitor className="w-4 h-4 shrink-0" />
     },
     {
+      id: 'procurement' as const,
+      label: 'Procurement',
+      shortLabel: 'Procure',
+      badge: procurementPendingCount > 0 ? `${procurementPendingCount}` : undefined,
+      badgeColor: 'amber' as const,
+      icon: <FileCheck2 className="w-4 h-4 shrink-0" />
+    },
+    {
       id: 'stock_tracker' as const,
-      label: 'Stock & Procurement',
+      label: 'Stock Reserves',
       shortLabel: 'Stock',
       badge: lowStockCount > 0 ? `${lowStockCount} Low` : undefined,
       badgeColor: 'amber' as const,
@@ -110,7 +121,7 @@ export const NavigationRail: React.FC<NavigationRailProps> = ({
       {/* Top Header & Brand Area */}
       <div>
         <div className="h-14 border-b border-[#23272B] flex items-center justify-between px-3">
-          <SysAssistRailLockup collapsed={isCollapsed} />
+          <SystemAssistRailLockup collapsed={isCollapsed} />
           
           {/* Collapse Toggle for Desktop */}
           <button

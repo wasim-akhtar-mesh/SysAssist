@@ -19,9 +19,14 @@ import {
   Radio, 
   ArrowUpRight,
   ShieldCheck,
-  Cpu
+  Cpu,
+  FileCheck2,
+  ShoppingCart,
+  Truck,
+  RotateCcw,
+  ClockAlert
 } from 'lucide-react';
-import { Asset, AssetCategory, AssetStatus, ChangeLogEntry, InventoryThreshold, JiraTicket } from '../types';
+import { Asset, AssetCategory, AssetStatus, ChangeLogEntry, InventoryThreshold, JiraTicket, ProcurementRequest, SimulatedUserRole } from '../types';
 import { getDashboardMetrics, PERIPHERAL_CATEGORIES } from '../utils/inventorySelectors';
 import { SkeuoButton, LedIndicator } from './SkeuoComponents';
 
@@ -30,11 +35,14 @@ interface DashboardViewProps {
   jiraTickets: JiraTicket[];
   changeLogs: ChangeLogEntry[];
   thresholds: InventoryThreshold[];
+  procurementRequests?: ProcurementRequest[];
+  currentUserRole?: SimulatedUserRole;
   onNavigateToLaptops: (statusFilter?: AssetStatus | 'ALL') => void;
   onNavigateToPeripherals: (categoryFilter?: AssetCategory | 'ALL') => void;
   onNavigateToStock: () => void;
   onNavigateToJira: () => void;
   onNavigateToAudit: () => void;
+  onNavigateToProcurement?: (view?: 'my_requests' | 'awaiting_approval' | 'purchasing_queue' | 'all_requests', statusFilter?: string) => void;
   onSelectAssetByTag: (assetTag: string) => void;
   onOpenScanner: () => void;
   onOpenAddAsset: () => void;
@@ -45,16 +53,55 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   jiraTickets,
   changeLogs,
   thresholds,
+  procurementRequests = [],
+  currentUserRole,
   onNavigateToLaptops,
   onNavigateToPeripherals,
   onNavigateToStock,
   onNavigateToJira,
   onNavigateToAudit,
+  onNavigateToProcurement,
   onSelectAssetByTag,
   onOpenScanner,
   onOpenAddAsset
 }) => {
   const metrics = getDashboardMetrics(assets, jiraTickets, thresholds, changeLogs);
+
+  // Compute Procurement Metrics
+  const todayStr = new Date().toISOString().slice(0, 10);
+  const activeRoleEmail = currentUserRole?.email?.toLowerCase() || '';
+  const activeRoleName = currentUserRole?.name?.toLowerCase() || '';
+
+  const myOpenRequestsCount = procurementRequests.filter(r => 
+    (r.requester.email.toLowerCase() === activeRoleEmail || 
+     r.requester.name.toLowerCase() === activeRoleName) &&
+    r.status !== 'Closed' && r.status !== 'Rejected' && r.status !== 'Cancelled'
+  ).length;
+
+  const awaitingMyApprovalCount = procurementRequests.filter(r => {
+    if (currentUserRole?.id === 'it_head' && r.status === 'IT Head Review') {
+      return r.requester.email.toLowerCase() !== activeRoleEmail;
+    }
+    if (currentUserRole?.id === 'finance' && r.status === 'Finance Review') {
+      return r.requester.email.toLowerCase() !== activeRoleEmail;
+    }
+    return false;
+  }).length;
+
+  const financeApprovedCount = procurementRequests.filter(r => r.status === 'Purchasing Queue').length;
+
+  const orderedOrInTransitCount = procurementRequests.filter(r => 
+    r.status === 'Ordered' || r.status === 'Shipped'
+  ).length;
+
+  const overdueDeliveriesCount = procurementRequests.filter(r => {
+    if ((r.status === 'Ordered' || r.status === 'Shipped') && r.purchaseOrder?.expectedDeliveryDate) {
+      return r.purchaseOrder.expectedDeliveryDate < todayStr;
+    }
+    return false;
+  }).length;
+
+  const changesRequestedCount = procurementRequests.filter(r => r.status === 'Changes Requested').length;
 
   const peripheralIcons: Record<AssetCategory, React.ReactNode> = {
     'Laptop': <Laptop className="w-3.5 h-3.5" />,
@@ -173,6 +220,167 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             <ArrowRight className="w-3.5 h-3.5" />
           </div>
         </button>
+      </div>
+
+      {/* SECTION: Guarded Procurement Telemetry */}
+      <div className="ti-surface rounded-lg p-4 border border-[#D8D6CF] space-y-3">
+        <div className="flex items-center justify-between pb-2 border-b border-[#D8D6CF]">
+          <div className="flex items-center gap-2">
+            <FileCheck2 className="w-4 h-4 text-[#C66A2B]" />
+            <h3 className="text-xs font-bold uppercase tracking-wider text-[#181A1B]">
+              Guarded Procurement Telemetry
+            </h3>
+            <span className="text-[11px] font-mono text-[#686B6D]">
+              ({procurementRequests.length} total requests)
+            </span>
+          </div>
+          {onNavigateToProcurement && (
+            <button
+              type="button"
+              onClick={() => onNavigateToProcurement('all_requests')}
+              className="text-xs font-medium text-[#C66A2B] hover:text-[#B55E22] flex items-center gap-1 cursor-pointer focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-[#C66A2B] rounded px-1"
+              aria-label="Open Procurement Console"
+            >
+              <span>Open Procurement Console</span>
+              <ArrowUpRight className="w-3.5 h-3.5" />
+            </button>
+          )}
+        </div>
+
+        {/* 6 Compact Dashboard Cards */}
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5">
+          {/* 1. My Open Requests */}
+          <button
+            type="button"
+            onClick={() => onNavigateToProcurement?.('my_requests')}
+            className="w-full text-left p-3 rounded-md ti-card cursor-pointer hover:border-[#C66A2B] focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-[#C66A2B] transition-all group"
+            aria-label={`View my ${myOpenRequestsCount} open procurement requests`}
+          >
+            <div className="text-[10px] uppercase font-bold text-[#686B6D] mb-1 flex items-center justify-between">
+              <span>My Requests</span>
+              <FileCheck2 className="w-3 h-3 text-[#505457]" />
+            </div>
+            <div className="text-xl font-mono font-bold text-[#181A1B] group-hover:text-[#C66A2B] transition-colors">
+              {myOpenRequestsCount}
+            </div>
+            <div className="text-[10px] text-[#686B6D] mt-1 flex items-center justify-between">
+              <span>Active submissions</span>
+              <ArrowRight className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity" />
+            </div>
+          </button>
+
+          {/* 2. Awaiting My Approval */}
+          <button
+            type="button"
+            onClick={() => onNavigateToProcurement?.('awaiting_approval')}
+            className={`w-full text-left p-3 rounded-md ti-card cursor-pointer transition-all group ${
+              awaitingMyApprovalCount > 0 
+                ? 'hover:border-[#C66A2B] ring-1 ring-[#C66A2B]/30 bg-[#C66A2B]/5' 
+                : 'hover:border-[#737577]'
+            } focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-[#C66A2B]`}
+            aria-label={`View ${awaitingMyApprovalCount} requests awaiting my approval`}
+          >
+            <div className="text-[10px] uppercase font-bold text-[#C66A2B] mb-1 flex items-center justify-between">
+              <span>Awaiting Approval</span>
+              <Clock className="w-3 h-3 text-[#C66A2B]" />
+            </div>
+            <div className="text-xl font-mono font-bold text-[#C66A2B]">
+              {awaitingMyApprovalCount}
+            </div>
+            <div className="text-[10px] text-[#686B6D] mt-1 flex items-center justify-between">
+              <span>Awaiting review</span>
+              <ArrowRight className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity" />
+            </div>
+          </button>
+
+          {/* 3. Finance-Approved (Awaiting Order) */}
+          <button
+            type="button"
+            onClick={() => onNavigateToProcurement?.('purchasing_queue')}
+            className="w-full text-left p-3 rounded-md ti-card cursor-pointer hover:border-[#1956A6] focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-[#1956A6] transition-all group"
+            aria-label={`View ${financeApprovedCount} Finance-approved requests in purchasing queue`}
+          >
+            <div className="text-[10px] uppercase font-bold text-[#1956A6] mb-1 flex items-center justify-between">
+              <span>Purchasing Queue</span>
+              <ShoppingCart className="w-3 h-3 text-[#1956A6]" />
+            </div>
+            <div className="text-xl font-mono font-bold text-[#1956A6]">
+              {financeApprovedCount}
+            </div>
+            <div className="text-[10px] text-[#686B6D] mt-1 flex items-center justify-between">
+              <span>Approved for PO</span>
+              <ArrowRight className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity" />
+            </div>
+          </button>
+
+          {/* 4. Ordered or In Transit */}
+          <button
+            type="button"
+            onClick={() => onNavigateToProcurement?.('purchasing_queue', 'Ordered')}
+            className="w-full text-left p-3 rounded-md ti-card cursor-pointer hover:border-[#0F682C] focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-[#0F682C] transition-all group"
+            aria-label={`View ${orderedOrInTransitCount} ordered or in-transit shipments`}
+          >
+            <div className="text-[10px] uppercase font-bold text-[#0F682C] mb-1 flex items-center justify-between">
+              <span>In Transit</span>
+              <Truck className="w-3 h-3 text-[#0F682C]" />
+            </div>
+            <div className="text-xl font-mono font-bold text-[#0F682C]">
+              {orderedOrInTransitCount}
+            </div>
+            <div className="text-[10px] text-[#686B6D] mt-1 flex items-center justify-between">
+              <span>Vendor dispatched</span>
+              <ArrowRight className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity" />
+            </div>
+          </button>
+
+          {/* 5. Overdue Deliveries */}
+          <button
+            type="button"
+            onClick={() => onNavigateToProcurement?.('purchasing_queue', 'Overdue')}
+            className={`w-full text-left p-3 rounded-md ti-card cursor-pointer transition-all group ${
+              overdueDeliveriesCount > 0 
+                ? 'hover:border-[#B91C1C] ring-1 ring-[#B91C1C]/30 bg-[#FDF2F2]' 
+                : 'hover:border-[#737577]'
+            } focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-[#B91C1C]`}
+            aria-label={`View ${overdueDeliveriesCount} overdue procurement deliveries`}
+          >
+            <div className="text-[10px] uppercase font-bold text-[#B91C1C] mb-1 flex items-center justify-between">
+              <span>Overdue Delivery</span>
+              <ClockAlert className="w-3 h-3 text-[#B91C1C]" />
+            </div>
+            <div className="text-xl font-mono font-bold text-[#B91C1C]">
+              {overdueDeliveriesCount}
+            </div>
+            <div className="text-[10px] text-[#686B6D] mt-1 flex items-center justify-between">
+              <span>Past expected ETA</span>
+              <ArrowRight className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity" />
+            </div>
+          </button>
+
+          {/* 6. Requests Returned for Changes */}
+          <button
+            type="button"
+            onClick={() => onNavigateToProcurement?.('my_requests', 'Changes Requested')}
+            className={`w-full text-left p-3 rounded-md ti-card cursor-pointer transition-all group ${
+              changesRequestedCount > 0 
+                ? 'hover:border-[#D97706] ring-1 ring-[#D97706]/30 bg-[#FFFBEB]' 
+                : 'hover:border-[#737577]'
+            } focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-[#D97706]`}
+            aria-label={`View ${changesRequestedCount} requests returned for changes`}
+          >
+            <div className="text-[10px] uppercase font-bold text-[#D97706] mb-1 flex items-center justify-between">
+              <span>Changes Needed</span>
+              <RotateCcw className="w-3 h-3 text-[#D97706]" />
+            </div>
+            <div className="text-xl font-mono font-bold text-[#D97706]">
+              {changesRequestedCount}
+            </div>
+            <div className="text-[10px] text-[#686B6D] mt-1 flex items-center justify-between">
+              <span>Revisions requested</span>
+              <ArrowRight className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity" />
+            </div>
+          </button>
+        </div>
       </div>
 
       {/* SECTION 1: Laptop Fleet Instrument Deck */}

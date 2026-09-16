@@ -148,4 +148,52 @@ describe('DashboardView Accessibility & Navigation', () => {
     fireEvent.keyDown(auditRows[0], { key: ' ', code: 'Space' });
     expect(handleSelectTag).toHaveBeenCalledTimes(2);
   });
+
+  it('provides accessible buttons with meaningful names for procurement telemetry cards', () => {
+    const handleProcurement = vi.fn();
+
+    render(
+      <DashboardView
+        assets={INITIAL_ASSETS}
+        jiraTickets={INITIAL_JIRA_TICKETS}
+        changeLogs={INITIAL_CHANGE_LOGS}
+        thresholds={INVENTORY_THRESHOLDS}
+        onNavigateToLaptops={vi.fn()}
+        onNavigateToPeripherals={vi.fn()}
+        onNavigateToStock={vi.fn()}
+        onNavigateToJira={vi.fn()}
+        onNavigateToAudit={vi.fn()}
+        onNavigateToProcurement={handleProcurement}
+        onSelectAssetByTag={vi.fn()}
+        onOpenScanner={vi.fn()}
+        onOpenAddAsset={vi.fn()}
+      />
+    );
+
+    // My Open Requests
+    const myRequestsBtn = screen.getByRole('button', { name: /view my \d+ open procurement requests/i });
+    expect(myRequestsBtn.tagName.toLowerCase()).toBe('button');
+    fireEvent.click(myRequestsBtn);
+    expect(handleProcurement).toHaveBeenCalledWith('my_requests');
+
+    // Awaiting Approval
+    const awaitingApprovalBtn = screen.getByRole('button', { name: /view \d+ requests awaiting my approval/i });
+    expect(awaitingApprovalBtn.tagName.toLowerCase()).toBe('button');
+    fireEvent.click(awaitingApprovalBtn);
+    expect(handleProcurement).toHaveBeenCalledWith('awaiting_approval');
+
+    // Purchasing Queue
+    const purchasingQueueBtn = screen.getByRole('button', { name: /view \d+ finance-approved requests in purchasing queue/i });
+    expect(purchasingQueueBtn.tagName.toLowerCase()).toBe('button');
+    fireEvent.click(purchasingQueueBtn);
+    expect(handleProcurement).toHaveBeenCalledWith('purchasing_queue');
+
+    // Overdue Deliveries
+    const overdueBtn = screen.getByRole('button', { name: /view \d+ overdue procurement deliveries/i });
+    expect(overdueBtn.tagName.toLowerCase()).toBe('button');
+    fireEvent.click(overdueBtn);
+    expect(handleProcurement).toHaveBeenCalledWith('purchasing_queue', 'Overdue');
+  });
 });
+
+

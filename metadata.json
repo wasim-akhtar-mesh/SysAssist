@@ -1,6 +1,6 @@
 {
-  "name": "SysAssist",
-  "description": "Precision IT hardware asset management workstation in a refined Titanium & Ink aesthetic, featuring fluid inventory bays, optical barcode scanning, Jira request fulfillment, buffer threshold alerts, audit trail, and Apple GSX entitlement verification.",
+  "name": "System Assist",
+  "description": "Precision IT hardware asset management and procurement workstation in a refined Titanium & Ink aesthetic, featuring fluid inventory bays, optical barcode scanning, Jira request fulfillment, guarded procurement lifecycle, buffer threshold alerts, audit trail, and Apple GSX entitlement verification.",
   "requestFramePermissions": [
     "camera"
   ],

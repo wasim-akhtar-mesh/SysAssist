@@ -11,10 +11,13 @@ import {
   History, 
   User, 
   ShieldCheck,
-  Server
+  Server,
+  FileCheck2,
+  ChevronDown
 } from 'lucide-react';
 import { LedIndicator, SkeuoButton } from './SkeuoComponents';
 import { ActiveTab } from './NavigationRail';
+import { SimulatedUserRole } from '../types';
 
 interface UtilityBarProps {
   activeTab: ActiveTab;
@@ -24,7 +27,11 @@ interface UtilityBarProps {
   totalAssetsCount: number;
   openJiraCount: number;
   lowStockCount: number;
+  procurementPendingCount?: number;
   currentUser: string;
+  activeRole?: SimulatedUserRole;
+  onSelectRole?: (role: SimulatedUserRole) => void;
+  availableRoles?: SimulatedUserRole[];
 }
 
 export const UtilityBar: React.FC<UtilityBarProps> = ({
@@ -35,7 +42,11 @@ export const UtilityBar: React.FC<UtilityBarProps> = ({
   totalAssetsCount,
   openJiraCount,
   lowStockCount,
-  currentUser
+  procurementPendingCount = 0,
+  currentUser,
+  activeRole,
+  onSelectRole,
+  availableRoles = []
 }) => {
   const titles: Record<ActiveTab, { title: string; subtitle: string; icon: React.ReactNode }> = {
     dashboard: {
@@ -53,8 +64,13 @@ export const UtilityBar: React.FC<UtilityBarProps> = ({
       subtitle: 'Displays, docks, keyboards, mice, audio & other accessories',
       icon: <Monitor className="w-4 h-4 text-[#2C6E9B]" />
     },
+    procurement: {
+      title: 'Procurement Operations',
+      subtitle: `${procurementPendingCount} requests in guarded purchasing lifecycle`,
+      icon: <FileCheck2 className="w-4 h-4 text-[#C66A2B]" />
+    },
     stock_tracker: {
-      title: 'Stock & Procurement',
+      title: 'Stock Reserves',
       subtitle: lowStockCount > 0 ? `${lowStockCount} category threshold alerts` : 'All reserve quotas nominal',
       icon: <Boxes className="w-4 h-4 text-[#C66A2B]" />
     },
@@ -102,7 +118,7 @@ export const UtilityBar: React.FC<UtilityBarProps> = ({
         </div>
       </div>
 
-      {/* Right: Integration telemetry and action triggers */}
+      {/* Right: Integration telemetry, Role Switcher, and action triggers */}
       <div className="flex items-center gap-2 sm:gap-3 shrink-0">
         {/* Honest Demo Integration Status Group */}
         <div className="hidden lg:flex items-center gap-2.5 px-2.5 py-1 rounded ti-well text-[11px] font-sans">
@@ -121,6 +137,30 @@ export const UtilityBar: React.FC<UtilityBarProps> = ({
             <span className="text-[#505457]">Apple GSX: <strong className="text-[#181A1B] font-medium">Demo API</strong></span>
           </div>
         </div>
+
+        {/* Development / Demo Role Switcher */}
+        {activeRole && onSelectRole && availableRoles.length > 0 && (
+          <div className="flex items-center gap-1.5 bg-[#E4E2DC] px-2 py-1 rounded border border-[#C5C3BC]">
+            <span className="text-[10px] font-medium uppercase tracking-wider text-[#707375] hidden sm:inline">
+              Demo Role:
+            </span>
+            <select
+              aria-label="Demo role selector"
+              value={activeRole.id}
+              onChange={(e) => {
+                const found = availableRoles.find(r => r.id === e.target.value);
+                if (found) onSelectRole(found);
+              }}
+              className="text-xs font-semibold text-[#181A1B] bg-transparent border-0 cursor-pointer focus:outline-none focus:ring-1 focus:ring-[#C66A2B] rounded pr-1"
+            >
+              {availableRoles.map(r => (
+                <option key={r.id} value={r.id}>
+                  {r.badge}: {r.name.split(' ')[0]}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
 
         {/* Action: Add Hardware */}
         <SkeuoButton
@@ -149,7 +189,7 @@ export const UtilityBar: React.FC<UtilityBarProps> = ({
             <User className="w-3 h-3" />
           </div>
           <span className="font-medium text-[#181A1B] truncate max-w-[130px]">
-            {currentUser.split(' ')[0]}
+            {activeRole ? activeRole.name.split(' ')[0] : currentUser.split(' ')[0]}
           </span>
         </div>
       </div>
