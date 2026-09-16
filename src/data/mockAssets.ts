@@ -249,10 +249,9 @@ export const INITIAL_ASSETS: Asset[] = [
     supplier: 'B&H Photo Video Pro',
     warrantyExpiry: '2026-01-20',
     specs: {
-      processor: 'Intel Goshen Ridge Thunderbolt 4 Controller',
-      ram: '256 MB Firmware Buffer',
-      storage: 'N/A (98W Host Power Delivery)',
-      display: 'Dual 6K 60Hz or Single 8K 60Hz'
+      connectionStandard: 'Thunderbolt 4 / USB4 (40Gbps)',
+      ports: '18 Ports (3x TB4, 5x USB-A 3.2, 3x USB-C 10Gbps, 2.5GbE, DisplayPort 1.4, SD 4.0)',
+      powerDelivery: '98W Host Charging Power Delivery'
     },
     changeLogs: [
       {
@@ -293,10 +292,10 @@ export const INITIAL_ASSETS: Asset[] = [
     supplier: 'Apple Direct Enterprise',
     warrantyExpiry: '2027-01-18',
     specs: {
-      processor: 'Apple A13 Bionic (Center Stage & Spatial Audio DSP)',
-      ram: '2 GB System RAM',
-      storage: '64 GB NAND Firmware Storage',
-      display: '27-inch 5K Retina (5120x2880, 600 nits, P3 Wide color)'
+      screenSize: '27-inch',
+      resolution: '5K Retina (5120x2880, 600 nits, P3 Wide color)',
+      connectionPorts: '1x Thunderbolt 3 (96W PD host), 3x USB-C (10Gbps)',
+      refreshRate: '60 Hz'
     },
     appleCoverage: {
       isAppleDevice: true,
@@ -388,10 +387,10 @@ export const INITIAL_ASSETS: Asset[] = [
     supplier: 'Dell Premier Direct',
     warrantyExpiry: '2026-11-20',
     specs: {
-      processor: 'Dell Display Manager ASIC',
-      ram: 'Internal LUT',
-      storage: 'N/A (90W USB-C PD)',
-      display: '31.5-inch 4K UHD IPS Black (3840x2160, 2000:1 contrast)'
+      screenSize: '31.5-inch',
+      resolution: '4K UHD IPS Black (3840x2160, 2000:1 contrast)',
+      connectionPorts: 'USB-C Hub (90W PD, RJ45 Ethernet, DisplayPort 1.4, HDMI 2.0)',
+      refreshRate: '60 Hz'
     },
     changeLogs: []
   },
@@ -412,10 +411,9 @@ export const INITIAL_ASSETS: Asset[] = [
     supplier: 'Keychron Direct',
     warrantyExpiry: '2025-03-01',
     specs: {
-      processor: 'ARM Cortex-M4 32-bit STM32L432',
-      ram: 'QMK/VIA Flash Buffer',
-      storage: '128 KB Onboard Memory',
-      batteryHealth: 100
+      keyboardLayout: '75% Compact ANSI Layout (82 Keys)',
+      switchType: 'Gateron Jupiter Banana (Hot-swappable tactile)',
+      connectivity: 'Bluetooth 5.1 & Type-C Wired (1000 Hz polling)'
     },
     changeLogs: []
   },
@@ -436,9 +434,9 @@ export const INITIAL_ASSETS: Asset[] = [
     supplier: 'CDW Tech Direct',
     warrantyExpiry: '2026-02-15',
     specs: {
-      processor: 'Logitech Darkfield Laser Sensor Engine',
-      ram: 'Logi Bolt Encrypted RAM',
-      storage: 'N/A'
+      connectivity: 'Logi Bolt USB Receiver & Bluetooth Low Energy',
+      sensorType: 'Darkfield High Precision Optical',
+      dpi: '8,000 DPI (Quiet Click switches)'
     },
     changeLogs: []
   },
@@ -459,9 +457,9 @@ export const INITIAL_ASSETS: Asset[] = [
     supplier: 'B&H Photo Video Pro',
     warrantyExpiry: '2025-01-10',
     specs: {
-      processor: 'Integrated Processor V1 + HD Noise Canceling Processor QN1',
-      ram: '30-hour Battery Management ASIC',
-      storage: 'N/A'
+      connectivity: 'Bluetooth 5.2 (LDAC / AAC / SBC) & 3.5mm Stereo Jack',
+      batteryLife: '30 hours with ANC active (3-minute quick charge for 3 hours)',
+      audioFeatures: 'Dual Processor V1 + QN1 Active Noise Canceling, 8 Beamforming Mics'
     },
     changeLogs: []
   },

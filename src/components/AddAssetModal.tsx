@@ -1,8 +1,14 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { X, Plus, ShieldCheck, Cpu, HardDrive, RefreshCw, CheckCircle2, Laptop } from 'lucide-react';
-import { Asset, AssetCategory, ChangeLogEntry } from '../types';
+import { X, Plus, ShieldCheck, RefreshCw, CheckCircle2, Laptop, Monitor, Boxes, Keyboard as KeyboardIcon, Mouse as MouseIcon, Headphones, HelpCircle } from 'lucide-react';
+import { Asset, AssetCategory, ChangeLogEntry, HardwareSpecs } from '../types';
 import { AppleApiService } from '../services/appleService';
 import { SkeuoButton } from './SkeuoComponents';
+import { 
+  generateUniqueAssetTag, 
+  generateUniqueAssetId, 
+  generateUniqueBarcode, 
+  generateUniqueLogId 
+} from '../utils/idGenerator';
 
 interface AddAssetModalProps {
   isOpen: boolean;
@@ -10,6 +16,7 @@ interface AddAssetModalProps {
   onAddAsset: (asset: Asset, initialLog: ChangeLogEntry) => void;
   initialBarcode?: string;
   currentUser: string;
+  existingAssets?: Asset[];
 }
 
 export const AddAssetModal: React.FC<AddAssetModalProps> = ({
@@ -17,7 +24,8 @@ export const AddAssetModal: React.FC<AddAssetModalProps> = ({
   onClose,
   onAddAsset,
   initialBarcode = '',
-  currentUser
+  currentUser,
+  existingAssets = []
 }) => {
   const [name, setName] = useState<string>('');
   const [manufacturer, setManufacturer] = useState<string>('');
@@ -28,55 +36,47 @@ export const AddAssetModal: React.FC<AddAssetModalProps> = ({
   const [location, setLocation] = useState<string>('IT Depot - Rack Bay 01');
   const [purchasePrice, setPurchasePrice] = useState<number>(0);
   const [supplier, setSupplier] = useState<string>('');
+  
+  // Category-aware specification state
+  // Laptop
   const [processor, setProcessor] = useState<string>('');
   const [ram, setRam] = useState<string>('');
   const [storage, setStorage] = useState<string>('');
+  const [display, setDisplay] = useState<string>('');
+  
+  // Display
+  const [screenSize, setScreenSize] = useState<string>('');
+  const [resolution, setResolution] = useState<string>('');
+  const [connectionPorts, setConnectionPorts] = useState<string>('');
+  const [refreshRate, setRefreshRate] = useState<string>('');
+
+  // Dock
+  const [connectionStandard, setConnectionStandard] = useState<string>('');
+  const [dockPorts, setDockPorts] = useState<string>('');
+  const [powerDelivery, setPowerDelivery] = useState<string>('');
+
+  // Keyboard
+  const [keyboardLayout, setKeyboardLayout] = useState<string>('');
+  const [switchType, setSwitchType] = useState<string>('');
+  const [keyboardConnectivity, setKeyboardConnectivity] = useState<string>('');
+
+  // Mouse
+  const [mouseConnectivity, setMouseConnectivity] = useState<string>('');
+  const [sensorType, setSensorType] = useState<string>('');
+  const [dpi, setDpi] = useState<string>('');
+
+  // Audio / Headset
+  const [audioConnectivity, setAudioConnectivity] = useState<string>('');
+  const [batteryLife, setBatteryLife] = useState<string>('');
+  const [audioFeatures, setAudioFeatures] = useState<string>('');
+
+  // Other / Generic
+  const [generalSpecs, setGeneralSpecs] = useState<string>('');
+
   const [isQueryingApple, setIsQueryingApple] = useState<boolean>(false);
   const [appleQueried, setAppleQueried] = useState<boolean>(false);
 
   const prevIsOpenRef = useRef(false);
-
-  // Initialize and synchronize form state upon modal opening
-  useEffect(() => {
-    if (isOpen && !prevIsOpenRef.current) {
-      // Newly opened: fresh intake state
-      setName('');
-      setManufacturer('Apple');
-      setModel('');
-      setCategory('Laptop');
-      setSerialNumber('');
-      setBarcode(initialBarcode || `88${Math.floor(10000000 + Math.random() * 90000000)}`);
-      setLocation('IT Depot - Rack Bay 01');
-      setPurchasePrice(0);
-      setSupplier('Apple Direct Enterprise');
-      setProcessor('');
-      setRam('');
-      setStorage('');
-      setAppleQueried(false);
-      setIsQueryingApple(false);
-    }
-    prevIsOpenRef.current = isOpen;
-  }, [isOpen, initialBarcode]);
-
-  // Synchronize incoming barcode from scanner if it arrives while modal is opened
-  useEffect(() => {
-    if (isOpen && initialBarcode && initialBarcode !== barcode) {
-      setBarcode(initialBarcode);
-    }
-  }, [isOpen, initialBarcode, barcode]);
-
-  // Handle escape key
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && isOpen) {
-        handleCancel();
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isOpen]);
-
-  if (!isOpen) return null;
 
   const resetForm = () => {
     setName('');
@@ -91,9 +91,55 @@ export const AddAssetModal: React.FC<AddAssetModalProps> = ({
     setProcessor('');
     setRam('');
     setStorage('');
+    setDisplay('');
+    setScreenSize('');
+    setResolution('');
+    setConnectionPorts('');
+    setRefreshRate('');
+    setConnectionStandard('');
+    setDockPorts('');
+    setPowerDelivery('');
+    setKeyboardLayout('');
+    setSwitchType('');
+    setKeyboardConnectivity('');
+    setMouseConnectivity('');
+    setSensorType('');
+    setDpi('');
+    setAudioConnectivity('');
+    setBatteryLife('');
+    setAudioFeatures('');
+    setGeneralSpecs('');
     setAppleQueried(false);
     setIsQueryingApple(false);
   };
+
+  // Apply initial barcode ONCE when a new intake session opens, and initialize defaults
+  useEffect(() => {
+    if (isOpen && !prevIsOpenRef.current) {
+      // Fresh intake session
+      resetForm();
+      setManufacturer('Apple');
+      setCategory('Laptop');
+      setSupplier('Apple Direct Enterprise');
+      // Apply initialBarcode if passed from scanner, otherwise generate fresh collision-safe barcode
+      const initialBc = initialBarcode.trim() || generateUniqueBarcode(existingAssets);
+      setBarcode(initialBc);
+    }
+    prevIsOpenRef.current = isOpen;
+  }, [isOpen, initialBarcode, existingAssets]);
+
+  // Handle escape key
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && isOpen) {
+        handleCancel();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen]);
+
+  if (!isOpen) return null;
 
   const handleCancel = () => {
     resetForm();
@@ -107,9 +153,9 @@ export const AddAssetModal: React.FC<AddAssetModalProps> = ({
       const result = await AppleApiService.fetchCoverageBySerial(serialNumber);
       setName(result.modelName);
       setManufacturer('Apple');
-      setProcessor(result.specs.processor);
-      setRam(result.specs.ram);
-      setStorage(result.specs.storage);
+      if (result.specs.processor) setProcessor(result.specs.processor);
+      if (result.specs.ram) setRam(result.specs.ram);
+      if (result.specs.storage) setStorage(result.specs.storage);
       setAppleQueried(true);
     } finally {
       setIsQueryingApple(false);
@@ -118,14 +164,48 @@ export const AddAssetModal: React.FC<AddAssetModalProps> = ({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    const assetTag = `AST-${Math.floor(1000 + Math.random() * 9000)}`;
+    const assetTag = generateUniqueAssetTag(existingAssets);
+    const assetId = generateUniqueAssetId(existingAssets);
+    const finalBarcode = barcode.trim() || generateUniqueBarcode(existingAssets);
     const now = new Date().toISOString();
     const isApple = manufacturer.toLowerCase() === 'apple';
 
+    // Construct category-aware specs
+    const specs: HardwareSpecs = {};
+    if (category === 'Laptop') {
+      if (processor.trim()) specs.processor = processor.trim();
+      if (ram.trim()) specs.ram = ram.trim();
+      if (storage.trim()) specs.storage = storage.trim();
+      if (display.trim()) specs.display = display.trim();
+    } else if (category === 'Display') {
+      if (screenSize.trim()) specs.screenSize = screenSize.trim();
+      if (resolution.trim()) specs.resolution = resolution.trim();
+      if (connectionPorts.trim()) specs.connectionPorts = connectionPorts.trim();
+      if (refreshRate.trim()) specs.refreshRate = refreshRate.trim();
+    } else if (category === 'Dock') {
+      if (connectionStandard.trim()) specs.connectionStandard = connectionStandard.trim();
+      if (dockPorts.trim()) specs.ports = dockPorts.trim();
+      if (powerDelivery.trim()) specs.powerDelivery = powerDelivery.trim();
+    } else if (category === 'Keyboard') {
+      if (keyboardLayout.trim()) specs.keyboardLayout = keyboardLayout.trim();
+      if (switchType.trim()) specs.switchType = switchType.trim();
+      if (keyboardConnectivity.trim()) specs.connectivity = keyboardConnectivity.trim();
+    } else if (category === 'Mouse') {
+      if (mouseConnectivity.trim()) specs.connectivity = mouseConnectivity.trim();
+      if (sensorType.trim()) specs.sensorType = sensorType.trim();
+      if (dpi.trim()) specs.dpi = dpi.trim();
+    } else if (category === 'Audio/Headset') {
+      if (audioConnectivity.trim()) specs.connectivity = audioConnectivity.trim();
+      if (batteryLife.trim()) specs.batteryLife = batteryLife.trim();
+      if (audioFeatures.trim()) specs.audioFeatures = audioFeatures.trim();
+    } else {
+      if (generalSpecs.trim()) specs.generalSpecs = generalSpecs.trim();
+    }
+
     const newAsset: Asset = {
-      id: `ast-${Date.now()}`,
+      id: assetId,
       assetTag,
-      barcode: barcode || `88${Date.now().toString().slice(-8)}`,
+      barcode: finalBarcode,
       name: name.trim() || `${manufacturer} ${model || category}`.trim() || 'New Equipment',
       manufacturer: manufacturer.trim() || 'Enterprise Hardware',
       model: model.trim() || 'Generic Model',
@@ -138,11 +218,7 @@ export const AddAssetModal: React.FC<AddAssetModalProps> = ({
       purchasePrice: Number(purchasePrice) || 0,
       supplier: supplier.trim() || 'Enterprise Supplier',
       warrantyExpiry: new Date(Date.now() + 3 * 365 * 24 * 3600 * 1000).toISOString().slice(0, 10),
-      specs: {
-        processor: processor.trim(),
-        ram: ram.trim(),
-        storage: storage.trim()
-      },
+      specs,
       appleCoverage: isApple ? {
         isAppleDevice: true,
         modelName: name || 'Apple Device',
@@ -160,7 +236,7 @@ export const AddAssetModal: React.FC<AddAssetModalProps> = ({
     };
 
     const initialLog: ChangeLogEntry = {
-      id: `log-${Date.now()}`,
+      id: generateUniqueLogId(),
       assetId: newAsset.id,
       assetTag: newAsset.assetTag,
       assetName: newAsset.name,
@@ -207,8 +283,9 @@ export const AddAssetModal: React.FC<AddAssetModalProps> = ({
           </div>
           <button
             onClick={handleCancel}
-            className="p-1 rounded ti-btn text-[#686B6D] hover:text-[#181A1B] cursor-pointer"
+            className="p-1 rounded ti-btn text-[#686B6D] hover:text-[#181A1B] cursor-pointer focus-visible:ring-2 focus-visible:ring-[#C66A2B] focus-visible:outline-hidden"
             aria-label="Close dialog"
+            type="button"
           >
             <X className="w-4 h-4" />
           </button>
@@ -218,8 +295,9 @@ export const AddAssetModal: React.FC<AddAssetModalProps> = ({
         <form onSubmit={handleSubmit} className="space-y-3">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label className="block text-[10px] uppercase text-[#686B6D] mb-1 font-medium">Category</label>
+              <label htmlFor="intake-category" className="block text-[10px] uppercase text-[#686B6D] mb-1 font-medium">Category</label>
               <select
+                id="intake-category"
                 value={category}
                 onChange={(e) => setCategory(e.target.value as AssetCategory)}
                 className="w-full h-8 px-2 rounded ti-well text-xs text-[#181A1B] border border-[#C5C3BC] focus:outline-2 focus:outline-[#2C6E9B]"
@@ -235,8 +313,9 @@ export const AddAssetModal: React.FC<AddAssetModalProps> = ({
             </div>
 
             <div>
-              <label className="block text-[10px] uppercase text-[#686B6D] mb-1 font-medium">Manufacturer</label>
+              <label htmlFor="intake-manufacturer" className="block text-[10px] uppercase text-[#686B6D] mb-1 font-medium">Manufacturer</label>
               <input
+                id="intake-manufacturer"
                 type="text"
                 value={manufacturer}
                 onChange={(e) => setManufacturer(e.target.value)}
@@ -249,8 +328,9 @@ export const AddAssetModal: React.FC<AddAssetModalProps> = ({
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label className="block text-[10px] uppercase text-[#686B6D] mb-1 font-medium">Equipment Name</label>
+              <label htmlFor="intake-name" className="block text-[10px] uppercase text-[#686B6D] mb-1 font-medium">Equipment Name</label>
               <input
+                id="intake-name"
                 type="text"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
@@ -261,8 +341,9 @@ export const AddAssetModal: React.FC<AddAssetModalProps> = ({
             </div>
 
             <div>
-              <label className="block text-[10px] uppercase text-[#686B6D] mb-1 font-medium">Model Code</label>
+              <label htmlFor="intake-model" className="block text-[10px] uppercase text-[#686B6D] mb-1 font-medium">Model Code</label>
               <input
+                id="intake-model"
                 type="text"
                 value={model}
                 onChange={(e) => setModel(e.target.value)}
@@ -275,7 +356,7 @@ export const AddAssetModal: React.FC<AddAssetModalProps> = ({
           {/* Serial Number & GSX Lookup Strip */}
           <div className="p-3 rounded ti-surface border border-[#C5C3BC] space-y-2">
             <div className="flex items-center justify-between">
-              <label className="text-[10px] uppercase text-[#686B6D] font-bold">Serial Number & GSX Validation</label>
+              <label htmlFor="intake-serial" className="text-[10px] uppercase text-[#686B6D] font-bold">Serial Number & GSX Validation</label>
               {appleQueried && (
                 <span className="text-[10px] text-[#0F682C] font-semibold flex items-center gap-1">
                   <CheckCircle2 className="w-3 h-3" /> GSX Verified
@@ -284,6 +365,7 @@ export const AddAssetModal: React.FC<AddAssetModalProps> = ({
             </div>
             <div className="flex gap-2">
               <input
+                id="intake-serial"
                 type="text"
                 value={serialNumber}
                 onChange={(e) => setSerialNumber(e.target.value.toUpperCase())}
@@ -306,19 +388,23 @@ export const AddAssetModal: React.FC<AddAssetModalProps> = ({
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label className="block text-[10px] uppercase text-[#686B6D] mb-1 font-medium">Barcode (Code 128)</label>
+              <label htmlFor="intake-barcode" className="block text-[10px] uppercase text-[#686B6D] mb-1 font-medium">
+                Barcode (Code 128)
+              </label>
               <input
+                id="intake-barcode"
                 type="text"
                 value={barcode}
                 onChange={(e) => setBarcode(e.target.value)}
                 required
-                className="w-full h-8 px-2 rounded ti-well font-mono text-xs text-[#181A1B] border border-[#C5C3BC]"
+                className="w-full h-8 px-2 rounded ti-well font-mono text-xs text-[#181A1B] border border-[#C5C3BC] focus:outline-2 focus:outline-[#2C6E9B]"
               />
             </div>
 
             <div>
-              <label className="block text-[10px] uppercase text-[#686B6D] mb-1 font-medium">Depot Storage Location</label>
+              <label htmlFor="intake-location" className="block text-[10px] uppercase text-[#686B6D] mb-1 font-medium">Depot Storage Location</label>
               <input
+                id="intake-location"
                 type="text"
                 value={location}
                 onChange={(e) => setLocation(e.target.value)}
@@ -330,8 +416,9 @@ export const AddAssetModal: React.FC<AddAssetModalProps> = ({
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label className="block text-[10px] uppercase text-[#686B6D] mb-1 font-medium">Purchase Price ($ USD)</label>
+              <label htmlFor="intake-price" className="block text-[10px] uppercase text-[#686B6D] mb-1 font-medium">Purchase Price ($ USD)</label>
               <input
+                id="intake-price"
                 type="number"
                 step="0.01"
                 value={purchasePrice || ''}
@@ -342,8 +429,9 @@ export const AddAssetModal: React.FC<AddAssetModalProps> = ({
             </div>
 
             <div>
-              <label className="block text-[10px] uppercase text-[#686B6D] mb-1 font-medium">Enterprise Supplier</label>
+              <label htmlFor="intake-supplier" className="block text-[10px] uppercase text-[#686B6D] mb-1 font-medium">Enterprise Supplier</label>
               <input
+                id="intake-supplier"
                 type="text"
                 value={supplier}
                 onChange={(e) => setSupplier(e.target.value)}
@@ -353,40 +441,260 @@ export const AddAssetModal: React.FC<AddAssetModalProps> = ({
             </div>
           </div>
 
+          {/* Category-Specific Technical Specs Section */}
           <div className="p-2.5 rounded ti-surface border border-[#C5C3BC] space-y-2">
-            <span className="text-[10px] uppercase text-[#686B6D] font-bold block">Detailed Technical Specs</span>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+            <span className="text-[10px] uppercase text-[#686B6D] font-bold block">
+              {category} Technical Specifications
+            </span>
+
+            {/* Laptop Specs */}
+            {category === 'Laptop' && (
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                <div>
+                  <label htmlFor="spec-cpu" className="block text-[9px] uppercase text-[#686B6D] mb-0.5">CPU / Processor</label>
+                  <input
+                    id="spec-cpu"
+                    type="text"
+                    value={processor}
+                    onChange={(e) => setProcessor(e.target.value)}
+                    placeholder="e.g. Apple M3 Max"
+                    className="w-full h-7.5 px-2 rounded ti-well text-xs text-[#181A1B] border border-[#C5C3BC]"
+                  />
+                </div>
+                <div>
+                  <label htmlFor="spec-ram" className="block text-[9px] uppercase text-[#686B6D] mb-0.5">RAM</label>
+                  <input
+                    id="spec-ram"
+                    type="text"
+                    value={ram}
+                    onChange={(e) => setRam(e.target.value)}
+                    placeholder="e.g. 64 GB"
+                    className="w-full h-7.5 px-2 rounded ti-well text-xs text-[#181A1B] border border-[#C5C3BC]"
+                  />
+                </div>
+                <div>
+                  <label htmlFor="spec-storage" className="block text-[9px] uppercase text-[#686B6D] mb-0.5">Storage SSD</label>
+                  <input
+                    id="spec-storage"
+                    type="text"
+                    value={storage}
+                    onChange={(e) => setStorage(e.target.value)}
+                    placeholder="e.g. 2 TB NVMe"
+                    className="w-full h-7.5 px-2 rounded ti-well text-xs text-[#181A1B] border border-[#C5C3BC]"
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* Display Specs */}
+            {category === 'Display' && (
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                <div>
+                  <label htmlFor="spec-size-res" className="block text-[9px] uppercase text-[#686B6D] mb-0.5">Size & Resolution</label>
+                  <input
+                    id="spec-size-res"
+                    type="text"
+                    value={resolution}
+                    onChange={(e) => setResolution(e.target.value)}
+                    placeholder="e.g. 27-inch 5K (5120x2880)"
+                    className="w-full h-7.5 px-2 rounded ti-well text-xs text-[#181A1B] border border-[#C5C3BC]"
+                  />
+                </div>
+                <div>
+                  <label htmlFor="spec-display-ports" className="block text-[9px] uppercase text-[#686B6D] mb-0.5">Connection Ports</label>
+                  <input
+                    id="spec-display-ports"
+                    type="text"
+                    value={connectionPorts}
+                    onChange={(e) => setConnectionPorts(e.target.value)}
+                    placeholder="e.g. Thunderbolt 3, HDMI 2.1"
+                    className="w-full h-7.5 px-2 rounded ti-well text-xs text-[#181A1B] border border-[#C5C3BC]"
+                  />
+                </div>
+                <div>
+                  <label htmlFor="spec-refresh" className="block text-[9px] uppercase text-[#686B6D] mb-0.5">Refresh Rate</label>
+                  <input
+                    id="spec-refresh"
+                    type="text"
+                    value={refreshRate}
+                    onChange={(e) => setRefreshRate(e.target.value)}
+                    placeholder="e.g. 60 Hz or 144 Hz"
+                    className="w-full h-7.5 px-2 rounded ti-well text-xs text-[#181A1B] border border-[#C5C3BC]"
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* Dock Specs */}
+            {category === 'Dock' && (
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                <div>
+                  <label htmlFor="spec-dock-std" className="block text-[9px] uppercase text-[#686B6D] mb-0.5">Connection Standard</label>
+                  <input
+                    id="spec-dock-std"
+                    type="text"
+                    value={connectionStandard}
+                    onChange={(e) => setConnectionStandard(e.target.value)}
+                    placeholder="e.g. Thunderbolt 4 / USB4"
+                    className="w-full h-7.5 px-2 rounded ti-well text-xs text-[#181A1B] border border-[#C5C3BC]"
+                  />
+                </div>
+                <div>
+                  <label htmlFor="spec-dock-ports" className="block text-[9px] uppercase text-[#686B6D] mb-0.5">I/O Ports</label>
+                  <input
+                    id="spec-dock-ports"
+                    type="text"
+                    value={dockPorts}
+                    onChange={(e) => setDockPorts(e.target.value)}
+                    placeholder="e.g. 18 Ports (TB4, USB-A, 2.5GbE)"
+                    className="w-full h-7.5 px-2 rounded ti-well text-xs text-[#181A1B] border border-[#C5C3BC]"
+                  />
+                </div>
+                <div>
+                  <label htmlFor="spec-dock-pd" className="block text-[9px] uppercase text-[#686B6D] mb-0.5">Power Delivery</label>
+                  <input
+                    id="spec-dock-pd"
+                    type="text"
+                    value={powerDelivery}
+                    onChange={(e) => setPowerDelivery(e.target.value)}
+                    placeholder="e.g. 98W Host PD"
+                    className="w-full h-7.5 px-2 rounded ti-well text-xs text-[#181A1B] border border-[#C5C3BC]"
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* Keyboard Specs */}
+            {category === 'Keyboard' && (
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                <div>
+                  <label htmlFor="spec-kb-layout" className="block text-[9px] uppercase text-[#686B6D] mb-0.5">Keyboard Layout</label>
+                  <input
+                    id="spec-kb-layout"
+                    type="text"
+                    value={keyboardLayout}
+                    onChange={(e) => setKeyboardLayout(e.target.value)}
+                    placeholder="e.g. 75% ANSI (82 Keys)"
+                    className="w-full h-7.5 px-2 rounded ti-well text-xs text-[#181A1B] border border-[#C5C3BC]"
+                  />
+                </div>
+                <div>
+                  <label htmlFor="spec-kb-switch" className="block text-[9px] uppercase text-[#686B6D] mb-0.5">Switch Type</label>
+                  <input
+                    id="spec-kb-switch"
+                    type="text"
+                    value={switchType}
+                    onChange={(e) => setSwitchType(e.target.value)}
+                    placeholder="e.g. Tactile Brown, Linear Red"
+                    className="w-full h-7.5 px-2 rounded ti-well text-xs text-[#181A1B] border border-[#C5C3BC]"
+                  />
+                </div>
+                <div>
+                  <label htmlFor="spec-kb-conn" className="block text-[9px] uppercase text-[#686B6D] mb-0.5">Connectivity</label>
+                  <input
+                    id="spec-kb-conn"
+                    type="text"
+                    value={keyboardConnectivity}
+                    onChange={(e) => setKeyboardConnectivity(e.target.value)}
+                    placeholder="e.g. Bluetooth 5.1 & USB-C Wired"
+                    className="w-full h-7.5 px-2 rounded ti-well text-xs text-[#181A1B] border border-[#C5C3BC]"
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* Mouse Specs */}
+            {category === 'Mouse' && (
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                <div>
+                  <label htmlFor="spec-mouse-conn" className="block text-[9px] uppercase text-[#686B6D] mb-0.5">Connectivity</label>
+                  <input
+                    id="spec-mouse-conn"
+                    type="text"
+                    value={mouseConnectivity}
+                    onChange={(e) => setMouseConnectivity(e.target.value)}
+                    placeholder="e.g. 2.4GHz Wireless & Bluetooth"
+                    className="w-full h-7.5 px-2 rounded ti-well text-xs text-[#181A1B] border border-[#C5C3BC]"
+                  />
+                </div>
+                <div>
+                  <label htmlFor="spec-mouse-sensor" className="block text-[9px] uppercase text-[#686B6D] mb-0.5">Sensor Type</label>
+                  <input
+                    id="spec-mouse-sensor"
+                    type="text"
+                    value={sensorType}
+                    onChange={(e) => setSensorType(e.target.value)}
+                    placeholder="e.g. Darkfield Optical Sensor"
+                    className="w-full h-7.5 px-2 rounded ti-well text-xs text-[#181A1B] border border-[#C5C3BC]"
+                  />
+                </div>
+                <div>
+                  <label htmlFor="spec-mouse-dpi" className="block text-[9px] uppercase text-[#686B6D] mb-0.5">DPI / Precision</label>
+                  <input
+                    id="spec-mouse-dpi"
+                    type="text"
+                    value={dpi}
+                    onChange={(e) => setDpi(e.target.value)}
+                    placeholder="e.g. 8,000 DPI"
+                    className="w-full h-7.5 px-2 rounded ti-well text-xs text-[#181A1B] border border-[#C5C3BC]"
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* Audio / Headset Specs */}
+            {category === 'Audio/Headset' && (
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                <div>
+                  <label htmlFor="spec-audio-conn" className="block text-[9px] uppercase text-[#686B6D] mb-0.5">Connectivity</label>
+                  <input
+                    id="spec-audio-conn"
+                    type="text"
+                    value={audioConnectivity}
+                    onChange={(e) => setAudioConnectivity(e.target.value)}
+                    placeholder="e.g. Bluetooth 5.2 / 3.5mm"
+                    className="w-full h-7.5 px-2 rounded ti-well text-xs text-[#181A1B] border border-[#C5C3BC]"
+                  />
+                </div>
+                <div>
+                  <label htmlFor="spec-audio-battery" className="block text-[9px] uppercase text-[#686B6D] mb-0.5">Battery Life</label>
+                  <input
+                    id="spec-audio-battery"
+                    type="text"
+                    value={batteryLife}
+                    onChange={(e) => setBatteryLife(e.target.value)}
+                    placeholder="e.g. 30 Hours ANC Active"
+                    className="w-full h-7.5 px-2 rounded ti-well text-xs text-[#181A1B] border border-[#C5C3BC]"
+                  />
+                </div>
+                <div>
+                  <label htmlFor="spec-audio-features" className="block text-[9px] uppercase text-[#686B6D] mb-0.5">Audio Features</label>
+                  <input
+                    id="spec-audio-features"
+                    type="text"
+                    value={audioFeatures}
+                    onChange={(e) => setAudioFeatures(e.target.value)}
+                    placeholder="e.g. Active Noise Canceling"
+                    className="w-full h-7.5 px-2 rounded ti-well text-xs text-[#181A1B] border border-[#C5C3BC]"
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* Other Specs */}
+            {category === 'Other' && (
               <div>
-                <label className="block text-[9px] uppercase text-[#686B6D] mb-0.5">CPU / Processor</label>
+                <label htmlFor="spec-general" className="block text-[9px] uppercase text-[#686B6D] mb-0.5">General Metadata & Specifications</label>
                 <input
+                  id="spec-general"
                   type="text"
-                  value={processor}
-                  onChange={(e) => setProcessor(e.target.value)}
-                  placeholder="e.g. Apple M3 Max"
+                  value={generalSpecs}
+                  onChange={(e) => setGeneralSpecs(e.target.value)}
+                  placeholder="e.g. USB-C to DisplayPort 1.4 Adapter Cable, 2m"
                   className="w-full h-7.5 px-2 rounded ti-well text-xs text-[#181A1B] border border-[#C5C3BC]"
                 />
               </div>
-              <div>
-                <label className="block text-[9px] uppercase text-[#686B6D] mb-0.5">RAM</label>
-                <input
-                  type="text"
-                  value={ram}
-                  onChange={(e) => setRam(e.target.value)}
-                  placeholder="e.g. 64 GB"
-                  className="w-full h-7.5 px-2 rounded ti-well text-xs text-[#181A1B] border border-[#C5C3BC]"
-                />
-              </div>
-              <div>
-                <label className="block text-[9px] uppercase text-[#686B6D] mb-0.5">Storage SSD</label>
-                <input
-                  type="text"
-                  value={storage}
-                  onChange={(e) => setStorage(e.target.value)}
-                  placeholder="e.g. 2 TB NVMe"
-                  className="w-full h-7.5 px-2 rounded ti-well text-xs text-[#181A1B] border border-[#C5C3BC]"
-                />
-              </div>
-            </div>
+            )}
           </div>
 
           <div className="flex items-center justify-end gap-2 pt-2 border-t border-[#DFDDD6]">

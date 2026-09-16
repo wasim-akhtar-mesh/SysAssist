@@ -23,7 +23,7 @@ import {
 } from 'lucide-react';
 import { Asset, AssetCategory, AssetStatus, ChangeLogEntry, InventoryThreshold, JiraTicket } from '../types';
 import { getDashboardMetrics, PERIPHERAL_CATEGORIES } from '../utils/inventorySelectors';
-import { SkeuoButton, LedIndicator, SegmentedDisplay, StatusBadge } from './SkeuoComponents';
+import { SkeuoButton, LedIndicator } from './SkeuoComponents';
 
 interface DashboardViewProps {
   assets: Asset[];
@@ -96,6 +96,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             variant="standard"
             onClick={onOpenScanner}
             icon={<Scan className="w-3.5 h-3.5 text-[#C66A2B]" />}
+            aria-label="Open barcode scanner modal"
           >
             Scan Barcode
           </SkeuoButton>
@@ -104,6 +105,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             variant="primary"
             onClick={onOpenAddAsset}
             icon={<Plus className="w-3.5 h-3.5" />}
+            aria-label="Open hardware intake dialog"
           >
             Hardware Intake
           </SkeuoButton>
@@ -113,12 +115,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       {/* Operational Highlights Strip (Jira & Low-Stock Alerts) */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
         {/* Open Jira Requests Panel */}
-        <div 
+        <button 
+          type="button"
           onClick={onNavigateToJira}
-          className="ti-card rounded-lg p-3.5 cursor-pointer hover:border-[#2C6E9B] transition-all group flex items-center justify-between"
-          role="button"
-          tabIndex={0}
-          onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && onNavigateToJira()}
+          className="w-full text-left ti-card rounded-lg p-3.5 cursor-pointer hover:border-[#2C6E9B] focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-[#2C6E9B] transition-all group flex items-center justify-between"
+          aria-label={`Open Jira Requests: ${metrics.openJiraCount} pending provisioning requests`}
         >
           <div className="flex items-center gap-3">
             <div className="w-8 h-8 rounded ti-well flex items-center justify-center text-[#2C6E9B] border border-[#C5C3BC]">
@@ -138,15 +139,14 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             <span>View Desk</span>
             <ArrowRight className="w-3.5 h-3.5" />
           </div>
-        </div>
+        </button>
 
         {/* Low-Stock Categories Panel */}
-        <div 
+        <button 
+          type="button"
           onClick={onNavigateToStock}
-          className="ti-card rounded-lg p-3.5 cursor-pointer hover:border-[#D97706] transition-all group flex items-center justify-between"
-          role="button"
-          tabIndex={0}
-          onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && onNavigateToStock()}
+          className="w-full text-left ti-card rounded-lg p-3.5 cursor-pointer hover:border-[#D97706] focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-[#D97706] transition-all group flex items-center justify-between"
+          aria-label={`View Buffer Quota Status: ${metrics.lowStockCount} categories below buffer threshold`}
         >
           <div className="flex items-center gap-3">
             <div className={`w-8 h-8 rounded ti-well flex items-center justify-center border border-[#C5C3BC] ${
@@ -172,7 +172,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             <span>Procurement</span>
             <ArrowRight className="w-3.5 h-3.5" />
           </div>
-        </div>
+        </button>
       </div>
 
       {/* SECTION 1: Laptop Fleet Instrument Deck */}
@@ -188,23 +188,24 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             </span>
           </div>
           <button
+            type="button"
             onClick={() => onNavigateToLaptops('ALL')}
-            className="text-xs font-medium text-[#C66A2B] hover:text-[#B55E22] flex items-center gap-1 cursor-pointer"
+            className="text-xs font-medium text-[#C66A2B] hover:text-[#B55E22] flex items-center gap-1 cursor-pointer focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-[#C66A2B] rounded px-1"
+            aria-label="Open complete Laptop catalog"
           >
             <span>Open Laptop Catalog</span>
             <ArrowUpRight className="w-3.5 h-3.5" />
           </button>
         </div>
 
-        {/* 4 Interactive Metric Cells */}
+        {/* 4 Accessible Metric Buttons */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
           {/* Total Laptops */}
-          <div 
+          <button 
+            type="button"
             onClick={() => onNavigateToLaptops('ALL')}
-            className="p-3 rounded-md ti-card cursor-pointer hover:border-[#C66A2B] transition-all group"
-            role="button"
-            tabIndex={0}
-            title="View all laptops"
+            className="w-full text-left p-3 rounded-md ti-card cursor-pointer hover:border-[#C66A2B] focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-[#C66A2B] transition-all group"
+            aria-label={`View all ${metrics.laptops.total} laptops`}
           >
             <div className="text-[10px] uppercase font-bold text-[#686B6D] mb-1">
               Total Laptops
@@ -216,15 +217,14 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               <span>All laptops</span>
               <ArrowRight className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity" />
             </div>
-          </div>
+          </button>
 
           {/* Available Laptops (In Stock) */}
-          <div 
+          <button 
+            type="button"
             onClick={() => onNavigateToLaptops('In Stock')}
-            className="p-3 rounded-md ti-card cursor-pointer hover:border-[#0F682C] transition-all group"
-            role="button"
-            tabIndex={0}
-            title="View available in-stock laptops"
+            className="w-full text-left p-3 rounded-md ti-card cursor-pointer hover:border-[#0F682C] focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-[#0F682C] transition-all group"
+            aria-label={`View ${metrics.laptops.available} available in-stock laptops`}
           >
             <div className="text-[10px] uppercase font-bold text-[#0F682C] mb-1 flex items-center gap-1">
               <CheckCircle2 className="w-3 h-3" /> Available
@@ -236,15 +236,14 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               <span>In Depot Stock</span>
               <ArrowRight className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity" />
             </div>
-          </div>
+          </button>
 
           {/* Assigned Laptops (In Use) */}
-          <div 
+          <button 
+            type="button"
             onClick={() => onNavigateToLaptops('In Use')}
-            className="p-3 rounded-md ti-card cursor-pointer hover:border-[#1956A6] transition-all group"
-            role="button"
-            tabIndex={0}
-            title="View deployed/assigned laptops"
+            className="w-full text-left p-3 rounded-md ti-card cursor-pointer hover:border-[#1956A6] focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-[#1956A6] transition-all group"
+            aria-label={`View ${metrics.laptops.assigned} assigned deployed laptops`}
           >
             <div className="text-[10px] uppercase font-bold text-[#1956A6] mb-1 flex items-center gap-1">
               <UserCheck className="w-3 h-3" /> Assigned
@@ -256,15 +255,14 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               <span>Deployed to staff</span>
               <ArrowRight className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity" />
             </div>
-          </div>
+          </button>
 
           {/* Maintenance Laptops */}
-          <div 
+          <button 
+            type="button"
             onClick={() => onNavigateToLaptops('Maintenance')}
-            className="p-3 rounded-md ti-card cursor-pointer hover:border-[#8C4F00] transition-all group"
-            role="button"
-            tabIndex={0}
-            title="View laptops under repair or maintenance"
+            className="w-full text-left p-3 rounded-md ti-card cursor-pointer hover:border-[#8C4F00] focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-[#8C4F00] transition-all group"
+            aria-label={`View ${metrics.laptops.maintenance} laptops under maintenance or repair`}
           >
             <div className="text-[10px] uppercase font-bold text-[#8C4F00] mb-1 flex items-center gap-1">
               <Wrench className="w-3 h-3" /> Maintenance
@@ -276,7 +274,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               <span>Bench test / repair</span>
               <ArrowRight className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity" />
             </div>
-          </div>
+          </button>
         </div>
       </div>
 
@@ -293,26 +291,27 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             </span>
           </div>
           <button
+            type="button"
             onClick={() => onNavigateToPeripherals('ALL')}
-            className="text-xs font-medium text-[#2C6E9B] hover:text-[#1956A6] flex items-center gap-1 cursor-pointer"
+            className="text-xs font-medium text-[#2C6E9B] hover:text-[#1956A6] flex items-center gap-1 cursor-pointer focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-[#2C6E9B] rounded px-1"
+            aria-label="Open Peripherals catalog with all categories"
           >
             <span>Open All Peripherals</span>
             <ArrowUpRight className="w-3.5 h-3.5" />
           </button>
         </div>
 
-        {/* 6 Dedicated Peripheral Category Cards */}
+        {/* 6 Dedicated Accessible Peripheral Category Cards */}
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5">
           {PERIPHERAL_CATEGORIES.map(cat => {
             const data = metrics.peripherals.byCategory[cat];
             return (
-              <div
+              <button
                 key={cat}
+                type="button"
                 onClick={() => onNavigateToPeripherals(cat)}
-                className="p-3 rounded-md ti-card cursor-pointer hover:border-[#2C6E9B] hover:shadow-xs transition-all group flex flex-col justify-between"
-                role="button"
-                tabIndex={0}
-                title={`Filter peripherals to ${data.label}`}
+                className="w-full text-left p-3 rounded-md ti-card cursor-pointer hover:border-[#2C6E9B] focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-[#2C6E9B] hover:shadow-xs transition-all group flex flex-col justify-between"
+                aria-label={`Filter peripherals to ${data.label}: ${data.total} total units, ${data.inStock} depot in stock, ${data.inUse} deployed in use`}
               >
                 <div>
                   <div className="flex items-center justify-between mb-1.5">
@@ -326,7 +325,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                   </div>
                 </div>
 
-                <div className="mt-2.5 pt-2 border-t border-[#E8E6DF]">
+                <div className="mt-2.5 pt-2 border-t border-[#E8E6DF] w-full">
                   <div className="text-lg font-mono font-bold text-[#181A1B] group-hover:text-[#2C6E9B] transition-colors">
                     {data.total}
                   </div>
@@ -335,7 +334,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                     <span>{data.inUse} deployed</span>
                   </div>
                 </div>
-              </div>
+              </button>
             );
           })}
         </div>
@@ -351,8 +350,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             </h3>
           </div>
           <button
+            type="button"
             onClick={onNavigateToAudit}
-            className="text-xs font-medium text-[#C66A2B] hover:text-[#B55E22] flex items-center gap-1 cursor-pointer"
+            className="text-xs font-medium text-[#C66A2B] hover:text-[#B55E22] flex items-center gap-1 cursor-pointer focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-[#C66A2B] rounded px-1"
+            aria-label={`View complete operational audit trail with ${changeLogs.length} events`}
           >
             <span>View Complete Log ({changeLogs.length})</span>
             <ArrowRight className="w-3.5 h-3.5" />
@@ -376,14 +377,23 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 <tr 
                   key={event.id}
                   onClick={() => onSelectAssetByTag(event.assetTag)}
-                  className="hover:bg-[#FAF9F5] transition-colors cursor-pointer"
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      onSelectAssetByTag(event.assetTag);
+                    }
+                  }}
+                  tabIndex={0}
+                  role="button"
+                  aria-label={`Audit event: ${event.action} on asset ${event.assetTag}, ${event.property} transitioned from ${event.oldValue} to ${event.newValue}`}
+                  className="hover:bg-[#FAF9F5] focus-visible:bg-[#FAF9F5] focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-[#C66A2B] transition-colors cursor-pointer"
                 >
                   <td className="py-2 px-3 font-mono text-[11px] text-[#686B6D] whitespace-nowrap">
                     {new Date(event.timestamp).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}{' '}
                     {new Date(event.timestamp).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false })}
                   </td>
                   <td className="py-2 px-3 font-mono font-bold text-xs whitespace-nowrap">
-                    <span className="px-1.5 py-0.5 rounded bg-[#E5E3DD] text-[#181A1B] border border-[#C5C3BC] hover:border-[#C66A2B] transition-colors">
+                    <span className="px-1.5 py-0.5 rounded bg-[#E5E3DD] text-[#181A1B] border border-[#C5C3BC] group-hover:border-[#C66A2B] transition-colors">
                       {event.assetTag}
                     </span>
                   </td>

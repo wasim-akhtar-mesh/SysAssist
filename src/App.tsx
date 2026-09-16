@@ -22,6 +22,7 @@ import {
   getCategoryStockAssessments, 
   PERIPHERAL_CATEGORIES 
 } from './utils/inventorySelectors';
+import { generateUniqueJiraKey } from './utils/idGenerator';
 
 const CURRENT_USER = 'Wasim Akhtar (IT Lead)';
 
@@ -147,7 +148,7 @@ export default function App() {
 
   const handleFulfillJiraTicket = (ticketKey: string, assetId: string, log: ChangeLogEntry) => {
     const targetTicket = jiraTickets.find(t => t.key === ticketKey);
-    if (!targetTicket) return;
+    if (!targetTicket || targetTicket.status === 'Fulfilled' || targetTicket.status === 'Closed') return;
 
     // Update target asset
     setAssets(prev => prev.map(a => {
@@ -185,7 +186,7 @@ export default function App() {
   };
 
   const handleDraftProcurementTicket = (item: { category: string; modelName: string; quantityToOrder: number }) => {
-    const nextKey = `SYS-${1085 + jiraTickets.length}`;
+    const nextKey = generateUniqueJiraKey(jiraTickets);
     const now = new Date().toISOString();
     const newTicket: JiraTicket = {
       key: nextKey,
@@ -201,7 +202,8 @@ export default function App() {
         email: 'wasim.akhtar@meshconnect.internal',
         department: 'Hardware Operations'
       },
-      requestedHardware: `${item.quantityToOrder}x ${item.modelName}`
+      requestedHardware: `${item.quantityToOrder}x ${item.modelName}`,
+      requestedCategory: item.category as AssetCategory
     };
 
     setJiraTickets(prev => [newTicket, ...prev]);
@@ -383,10 +385,14 @@ export default function App() {
       {/* MODAL 3: Hardware Intake Dialog */}
       <AddAssetModal
         isOpen={isAddAssetOpen}
-        onClose={() => setIsAddAssetOpen(false)}
+        onClose={() => {
+          setIsAddAssetOpen(false);
+          setScannerInitialBarcode('');
+        }}
         onAddAsset={handleAddAsset}
         initialBarcode={scannerInitialBarcode}
         currentUser={CURRENT_USER}
+        existingAssets={assets}
       />
 
     </div>

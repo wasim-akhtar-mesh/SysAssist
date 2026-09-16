@@ -24,14 +24,42 @@ export interface Assignee {
 }
 
 export interface HardwareSpecs {
-  processor: string;
-  ram: string;
-  storage: string;
+  // Laptop / General Computing specs
+  processor?: string;
+  ram?: string;
+  storage?: string;
   display?: string;
   os?: string;
   batteryHealth?: number; // 0-100%
   batteryCycles?: number;
   graphics?: string;
+
+  // Display-specific specs
+  screenSize?: string;
+  resolution?: string;
+  connectionPorts?: string;
+  refreshRate?: string;
+
+  // Dock-specific specs
+  ports?: string;
+  connectionStandard?: string;
+  powerDelivery?: string;
+
+  // Keyboard-specific specs
+  keyboardLayout?: string;
+  switchType?: string;
+  connectivity?: string;
+
+  // Mouse-specific specs
+  sensorType?: string;
+  dpi?: string;
+
+  // Audio / Headset-specific specs
+  batteryLife?: string;
+  audioFeatures?: string;
+
+  // General fallback/generic metadata
+  generalSpecs?: string;
 }
 
 export interface AppleCoverage {
@@ -108,6 +136,7 @@ export interface JiraTicket {
     email: string;
     department: string;
   };
+  requestedCategory?: AssetCategory; // Structured requested category
   requestedEquipment?: string;
   requestedHardware?: string;
   createdAt?: string;

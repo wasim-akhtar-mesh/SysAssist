@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 import { Asset, ChangeLogEntry, JiraTicket } from '../types';
 import { AppleApiService } from '../services/appleService';
+import { getCategorySpecs } from '../utils/categorySpecs';
 import { SkeuoButton, LedIndicator, StatusBadge } from './SkeuoComponents';
 import { BarcodeLabelPlate } from './BarcodeLabelPlate';
 
@@ -301,30 +302,18 @@ export const AssetDetailModal: React.FC<AssetDetailModalProps> = ({
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
-                  <div className="p-2 rounded ti-well">
-                    <span className="text-[10px] uppercase tracking-wide text-[#686B6D] block">Processor</span>
-                    <span className="font-semibold text-[#181A1B] truncate block">{asset.specs.processor}</span>
-                  </div>
-                  <div className="p-2 rounded ti-well">
-                    <span className="text-[10px] uppercase tracking-wide text-[#686B6D] block">Unified Memory</span>
-                    <span className="font-mono font-semibold text-[#181A1B] block">{asset.specs.ram}</span>
-                  </div>
-                  <div className="p-2 rounded ti-well">
-                    <span className="text-[10px] uppercase tracking-wide text-[#686B6D] block">Storage Tier</span>
-                    <span className="font-mono font-semibold text-[#181A1B] block">{asset.specs.storage}</span>
-                  </div>
-                  <div className="p-2 rounded ti-well">
-                    <span className="text-[10px] uppercase tracking-wide text-[#686B6D] block">Graphics / GPU</span>
-                    <span className="font-semibold text-[#181A1B] truncate block">{asset.specs.graphics}</span>
-                  </div>
-                  <div className="p-2 rounded ti-well">
-                    <span className="text-[10px] uppercase tracking-wide text-[#686B6D] block">Display Output</span>
-                    <span className="font-semibold text-[#181A1B] truncate block">{asset.specs.display}</span>
-                  </div>
-                  <div className="p-2 rounded ti-well">
-                    <span className="text-[10px] uppercase tracking-wide text-[#686B6D] block">Operating System</span>
-                    <span className="font-semibold text-[#181A1B] truncate block">{asset.specs.os}</span>
-                  </div>
+                  {getCategorySpecs(asset.category, asset.specs).map((spec, idx) => (
+                    <div key={idx} className="p-2 rounded ti-well">
+                      <span className="text-[10px] uppercase tracking-wide text-[#686B6D] block">{spec.label}</span>
+                      <span className="font-semibold text-[#181A1B] truncate block">{spec.value}</span>
+                    </div>
+                  ))}
+                  {asset.specs?.os && asset.category === 'Laptop' && (
+                    <div className="p-2 rounded ti-well">
+                      <span className="text-[10px] uppercase tracking-wide text-[#686B6D] block">Operating System</span>
+                      <span className="font-semibold text-[#181A1B] truncate block">{asset.specs.os}</span>
+                    </div>
+                  )}
                 </div>
               </div>
 

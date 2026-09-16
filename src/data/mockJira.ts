@@ -13,6 +13,7 @@ export const INITIAL_JIRA_TICKETS: JiraTicket[] = [
       email: 'sina.vance@company.internal',
       department: 'Product Management'
     },
+    requestedCategory: 'Laptop',
     requestedEquipment: 'MacBook Pro 16" (M3 Max / 64GB / 2TB)',
     createdAt: '2024-09-12T10:15:00Z',
     updatedAt: '2024-09-12T10:15:00Z'
@@ -29,6 +30,7 @@ export const INITIAL_JIRA_TICKETS: JiraTicket[] = [
       email: 'evelyn.reed@company.internal',
       department: 'Executive Operations'
     },
+    requestedCategory: 'Dock',
     requestedEquipment: 'CalDigit TS4 Thunderbolt 4 Dock',
     createdAt: '2024-09-13T14:30:00Z',
     updatedAt: '2024-09-13T14:30:00Z'
@@ -45,6 +47,7 @@ export const INITIAL_JIRA_TICKETS: JiraTicket[] = [
       email: 'marcus.chen@company.internal',
       department: 'IT Support'
     },
+    requestedCategory: 'Laptop',
     requestedEquipment: 'Battery Replacement Kit (A2485)',
     createdAt: '2024-09-08T09:00:00Z',
     updatedAt: '2024-09-10T11:20:00Z',
@@ -62,6 +65,7 @@ export const INITIAL_JIRA_TICKETS: JiraTicket[] = [
       email: 'sarah.jenkins@company.internal',
       department: 'Security & Compliance'
     },
+    requestedCategory: 'Laptop',
     requestedEquipment: 'MacBook Pro 14" M3 Pro + Dell UltraSharp 32"',
     createdAt: '2024-09-11T16:45:00Z',
     updatedAt: '2024-09-11T16:45:00Z'
@@ -78,6 +82,7 @@ export const INITIAL_JIRA_TICKETS: JiraTicket[] = [
       email: 'john.doe@company.internal',
       department: 'Enterprise Architecture'
     },
+    requestedCategory: 'Laptop',
     requestedEquipment: 'MacBook Pro 16" M3 Max',
     createdAt: '2024-02-01T10:00:00Z',
     updatedAt: '2024-02-02T14:15:00Z',

@@ -36,31 +36,80 @@ export const BarcodeLabelPlate: React.FC<BarcodeLabelPlateProps> = ({ asset, sho
     const printWindow = window.open('', '_blank');
     if (!printWindow) return;
 
-    printWindow.document.write(`
-      <html>
-        <head>
-          <title>Asset Tag - ${asset.assetTag}</title>
-          <style>
-            body { font-family: monospace; padding: 20px; background: white; color: black; }
-            .tag-box { border: 2px solid black; padding: 16px; width: 320px; text-align: center; border-radius: 6px; }
-            .tag-header { font-size: 10px; font-weight: bold; border-bottom: 1px solid black; padding-bottom: 4px; margin-bottom: 8px; letter-spacing: 1px; }
-            .tag-id { font-size: 20px; font-weight: bold; letter-spacing: 2px; }
-            .meta { font-size: 10px; margin-top: 6px; }
-          </style>
-        </head>
-        <body>
-          <div class="tag-box">
-            <div class="tag-header">SYSASSIST HARDWARE OPERATIONS • CALIBRATED TAG</div>
-            <div class="tag-id">${asset.assetTag}</div>
-            <div style="margin: 8px 0;">${barcodeSvgRef.current?.outerHTML || ''}</div>
-            <div class="meta"><strong>S/N:</strong> ${asset.serialNumber}</div>
-            <div class="meta">${asset.name}</div>
-          </div>
-          <script>window.print();</script>
-        </body>
-      </html>
-    `);
-    printWindow.document.close();
+    const doc = printWindow.document;
+
+    // Reset document
+    doc.open();
+    doc.write('<!DOCTYPE html><html><head></head><body></body></html>');
+    doc.close();
+
+    doc.title = `Asset Tag - ${asset.assetTag}`;
+
+    // Construct style safely
+    const styleEl = doc.createElement('style');
+    styleEl.textContent = `
+      body { font-family: monospace; padding: 20px; background: white; color: black; margin: 0; }
+      .tag-box { border: 2px solid black; padding: 16px; width: 320px; text-align: center; border-radius: 6px; box-sizing: border-box; }
+      .tag-header { font-size: 10px; font-weight: bold; border-bottom: 1px solid black; padding-bottom: 4px; margin-bottom: 8px; letter-spacing: 1px; }
+      .tag-id { font-size: 20px; font-weight: bold; letter-spacing: 2px; }
+      .tag-barcode { margin: 8px 0; display: flex; justify-content: center; }
+      .meta { font-size: 10px; margin-top: 6px; word-break: break-word; }
+    `;
+    doc.head.appendChild(styleEl);
+
+    // Build container box using safe DOM APIs
+    const tagBox = doc.createElement('div');
+    tagBox.className = 'tag-box';
+
+    const header = doc.createElement('div');
+    header.className = 'tag-header';
+    header.textContent = 'SYSASSIST HARDWARE OPERATIONS • CALIBRATED TAG';
+    tagBox.appendChild(header);
+
+    const tagId = doc.createElement('div');
+    tagId.className = 'tag-id';
+    tagId.textContent = asset.assetTag;
+    tagBox.appendChild(tagId);
+
+    const barcodeContainer = doc.createElement('div');
+    barcodeContainer.className = 'tag-barcode';
+    if (barcodeSvgRef.current) {
+      try {
+        const importedSvg = doc.importNode(barcodeSvgRef.current, true);
+        barcodeContainer.appendChild(importedSvg);
+      } catch {
+        // fallback text representation if SVG clone fails
+        const fallbackText = doc.createElement('div');
+        fallbackText.textContent = asset.barcode;
+        barcodeContainer.appendChild(fallbackText);
+      }
+    }
+    tagBox.appendChild(barcodeContainer);
+
+    const snMeta = doc.createElement('div');
+    snMeta.className = 'meta';
+    const strongSn = doc.createElement('strong');
+    strongSn.textContent = 'S/N: ';
+    snMeta.appendChild(strongSn);
+    snMeta.appendChild(doc.createTextNode(asset.serialNumber));
+    tagBox.appendChild(snMeta);
+
+    const nameMeta = doc.createElement('div');
+    nameMeta.className = 'meta';
+    nameMeta.textContent = asset.name;
+    tagBox.appendChild(nameMeta);
+
+    doc.body.appendChild(tagBox);
+
+    // Trigger printing safely
+    setTimeout(() => {
+      try {
+        printWindow.focus();
+        printWindow.print();
+      } catch {
+        // handled gracefully
+      }
+    }, 150);
   };
 
   return (

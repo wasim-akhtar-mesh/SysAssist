@@ -27,6 +27,7 @@ import {
 import { Asset, AssetCategory, AssetStatus } from '../types';
 import { SkeuoButton, LedIndicator, StatusBadge } from './SkeuoComponents';
 import { PERIPHERAL_CATEGORIES } from '../utils/inventorySelectors';
+import { getCategorySpecs, getCategorySpecsSummary } from '../utils/categorySpecs';
 
 interface AssetListViewProps {
   assets: Asset[];
@@ -414,30 +415,14 @@ export const AssetListView: React.FC<AssetListViewProps> = ({
 
                     {/* Specifications or Category Details */}
                     <div className="p-2 rounded ti-well mb-3 space-y-1 text-[11px]">
-                      {asset.specs?.processor && (
-                        <div className="flex items-center justify-between text-[#505457]">
-                          <span className="text-[#7A7D80]">CPU:</span>
+                      {getCategorySpecs(asset.category, asset.specs).slice(0, 3).map((spec, idx) => (
+                        <div key={idx} className="flex items-center justify-between text-[#505457]">
+                          <span className="text-[#7A7D80]">{spec.label}:</span>
                           <span className="font-medium text-[#181A1B] truncate max-w-[170px]">
-                            {asset.specs.processor}
+                            {spec.value}
                           </span>
                         </div>
-                      )}
-                      {asset.specs?.ram && (
-                        <div className="flex items-center justify-between text-[#505457]">
-                          <span className="text-[#7A7D80]">RAM:</span>
-                          <span className="font-mono font-medium text-[#181A1B]">
-                            {asset.specs.ram}
-                          </span>
-                        </div>
-                      )}
-                      {asset.specs?.storage && (
-                        <div className="flex items-center justify-between text-[#505457]">
-                          <span className="text-[#7A7D80]">Storage:</span>
-                          <span className="font-mono font-medium text-[#181A1B]">
-                            {asset.specs.storage}
-                          </span>
-                        </div>
-                      )}
+                      ))}
                       <div className="flex items-center justify-between text-[#505457]">
                         <span className="text-[#7A7D80]">Location:</span>
                         <span className="truncate max-w-[170px] text-[#181A1B]">
@@ -486,7 +471,7 @@ export const AssetListView: React.FC<AssetListViewProps> = ({
                   <th className="py-2.5 px-3">Equipment / Model</th>
                   <th className="py-2.5 px-3">Category</th>
                   <th className="py-2.5 px-3">Status</th>
-                  <th className="py-2.5 px-3">Specs (CPU / RAM / Disk)</th>
+                  <th className="py-2.5 px-3">Hardware Specifications</th>
                   <th className="py-2.5 px-3">Custodian</th>
                   <th className="py-2.5 px-3">Serial / Barcode</th>
                   <th className="py-2.5 px-3 text-right">Action</th>
@@ -516,8 +501,8 @@ export const AssetListView: React.FC<AssetListViewProps> = ({
                     <td className="py-2.5 px-3 whitespace-nowrap">
                       <StatusBadge status={asset.status} />
                     </td>
-                    <td className="py-2.5 px-3 font-mono text-[11px] text-[#505457] max-w-[180px] truncate">
-                      {[asset.specs?.processor?.split('(')[0]?.trim(), asset.specs?.ram, asset.specs?.storage].filter(Boolean).join(' • ') || '—'}
+                    <td className="py-2.5 px-3 font-mono text-[11px] text-[#505457] max-w-[220px] truncate" title={getCategorySpecsSummary(asset)}>
+                      {getCategorySpecsSummary(asset)}
                     </td>
                     <td className="py-2.5 px-3 text-xs whitespace-nowrap">
                       {asset.assignedTo ? (
