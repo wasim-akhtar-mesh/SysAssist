@@ -69,7 +69,10 @@ export interface TransitionResult {
   updatedRequest?: ProcurementRequest;
   newAuditLog?: ProcurementAuditLog;
   affectedAsset?: Asset;
+  affectedAssets?: Asset[];
   assetLog?: ChangeLogEntry;
+  assetLogs?: ChangeLogEntry[];
+  createdAssets?: Asset[];
 }
 
 /**
@@ -180,11 +183,13 @@ export function transitionRequest(
     reason?: string;
     notes?: string;
     stockAssetId?: string;
+    stockAssetIds?: string[];
     stockAssetTag?: string;
     overrideMismatch?: boolean;
     purchaseOrder?: PurchaseOrderInfo;
     receipt?: DeliveryReceipt;
     registeredAssetTags?: string[];
+    newAssets?: Asset[];
     availableAssets?: Asset[];
   }
 ): TransitionResult {
@@ -309,35 +314,88 @@ export function transitionRequest(
         error: `Cannot fulfill from stock from status '${request.status}'. Must be in 'IT Head Review'.`
       };
     }
-    if (!payload?.stockAssetId || !payload?.availableAssets) {
+    if (actor.id !== 'it_head') {
       return {
         success: false,
-        error: 'Target asset ID and available inventory must be provided.'
+        error: 'Only the IT Head can fulfill requests from existing depot stock.'
+      };
+    }
+    // Prevent self-approval / self-fulfillment
+    if (request.requester.email.toLowerCase() === actor.email.toLowerCase() ||
+        request.requester.name.toLowerCase() === actor.name.toLowerCase()) {
+      return {
+        success: false,
+        error: 'Requester cannot approve or fulfill their own procurement request.'
+      };
+    }
+    if (!payload?.availableAssets) {
+      return {
+        success: false,
+        error: 'Available inventory must be provided.'
       };
     }
 
-    const targetAsset = payload.availableAssets.find(a => a.id === payload.stockAssetId);
-    if (!targetAsset) {
+    const selectedAssetIds = payload.stockAssetIds && payload.stockAssetIds.length > 0
+      ? payload.stockAssetIds
+      : (payload.stockAssetId ? [payload.stockAssetId] : []);
+
+    if (selectedAssetIds.length === 0) {
       return {
         success: false,
-        error: `Asset ${payload.stockAssetId} not found in inventory.`
+        error: 'Target asset ID(s) must be provided.'
       };
     }
 
-    if (targetAsset.status !== 'In Stock') {
+    // Must select the required quantity
+    if (selectedAssetIds.length !== request.quantity) {
       return {
         success: false,
-        error: `Asset ${targetAsset.assetTag} is currently '${targetAsset.status}' and cannot be assigned. Only 'In Stock' items can be fulfilled.`
+        error: `Must select exactly ${request.quantity} asset(s) to fulfill this request (selected: ${selectedAssetIds.length}).`
       };
     }
 
-    // Category check
-    const categoryMismatch = targetAsset.category !== request.category;
-    if (categoryMismatch && !payload.overrideMismatch) {
+    // Check for duplicate selections
+    if (new Set(selectedAssetIds).size !== selectedAssetIds.length) {
       return {
         success: false,
-        error: `Selected asset category (${targetAsset.category}) does not match requested category (${request.category}). Explicit mismatch override is required.`
+        error: 'Duplicate assets selected. Each allocated asset must be unique.'
       };
+    }
+
+    // Validate every selected asset
+    const selectedAssets: Asset[] = [];
+    for (const id of selectedAssetIds) {
+      const targetAsset = payload.availableAssets.find(a => a.id === id);
+      if (!targetAsset) {
+        return {
+          success: false,
+          error: `Asset ${id} not found in inventory.`
+        };
+      }
+      if (targetAsset.status !== 'In Stock' || targetAsset.assignedTo !== null) {
+        return {
+          success: false,
+          error: `Asset ${targetAsset.assetTag} (${targetAsset.name}) is currently '${targetAsset.status}' and cannot be assigned. Only unassigned 'In Stock' items can be fulfilled.`
+        };
+      }
+      selectedAssets.push(targetAsset);
+    }
+
+    // Category mismatch check across all assets
+    const categoryMismatch = selectedAssets.some(a => a.category !== request.category);
+    if (categoryMismatch) {
+      if (!payload.overrideMismatch) {
+        return {
+          success: false,
+          error: `One or more selected assets do not match the requested category (${request.category}). Explicit mismatch override is required.`
+        };
+      }
+      if (!payload.reason?.trim()) {
+        return {
+          success: false,
+          error: 'A written justification is required when fulfilling with assets from an alternate category.'
+        };
+      }
     }
 
     const newState: ProcurementStatus = 'Assigned/Fulfilled';
@@ -348,7 +406,7 @@ export function transitionRequest(
       approverRole: actor.title,
       decision: 'Approved',
       timestamp,
-      reason: `Fulfilled from depot stock: ${targetAsset.assetTag} (${targetAsset.name}). Bypassed Purchasing.`
+      reason: `Fulfilled from depot stock: ${selectedAssets.map(a => a.assetTag).join(', ')}. Bypassed Purchasing.`
     };
 
     const auditLog: ProcurementAuditLog = {
@@ -361,40 +419,50 @@ export function transitionRequest(
       previousState,
       newState,
       notes: categoryMismatch
-        ? `Fulfilled using alternate asset ${targetAsset.assetTag} (${targetAsset.category} vs requested ${request.category}). Override Reason: ${payload?.reason || 'Approved by IT Lead'}`
-        : `Immediate allocation of in-stock ${targetAsset.assetTag} (${targetAsset.model}) to ${request.requester.name}.`
+        ? `Fulfilled using alternate asset(s) ${selectedAssets.map(a => `${a.assetTag} (${a.category})`).join(', ')} vs requested ${request.category}. Override Reason: ${payload.reason}`
+        : `Immediate allocation of in-stock ${selectedAssets.map(a => `${a.assetTag} (${a.model})`).join(', ')} to ${request.requester.name}.`
     };
 
-    // Update the physical asset
-    const assetLog: ChangeLogEntry = {
-      id: generateUniqueLogId([]),
-      assetId: targetAsset.id,
-      assetTag: targetAsset.assetTag,
-      assetName: targetAsset.name,
-      timestamp,
-      performedBy: actor.name,
-      action: categoryMismatch ? 'PROCUREMENT_OVERRIDE' : 'PROCUREMENT_FULFILL',
-      property: 'assignedTo',
-      oldValue: 'Depot Stock',
-      newValue: `${request.requester.name} (${request.requester.department})`,
-      reason: `Fulfilled procurement request ${request.requestNumber}`,
-      procurementRequestNumber: request.requestNumber
-    };
+    // Update the physical assets and create change logs
+    const updatedAssets: Asset[] = [];
+    const assetLogs: ChangeLogEntry[] = [];
 
-    const updatedAsset: Asset = {
-      ...targetAsset,
-      status: 'In Use',
-      assignedTo: {
-        name: request.requester.name,
-        email: request.requester.email,
-        department: request.department,
-        assignedDate: timestamp.slice(0, 10),
-        role: 'Procurement Assignee'
-      },
-      linkedProcurementId: request.requestNumber,
-      changeLogs: [assetLog, ...(targetAsset.changeLogs || [])]
-    };
+    for (const targetAsset of selectedAssets) {
+      const isMismatch = targetAsset.category !== request.category;
+      const assetLog: ChangeLogEntry = {
+        id: generateUniqueLogId([]),
+        assetId: targetAsset.id,
+        assetTag: targetAsset.assetTag,
+        assetName: targetAsset.name,
+        timestamp,
+        performedBy: actor.name,
+        action: isMismatch ? 'PROCUREMENT_OVERRIDE' : 'PROCUREMENT_FULFILL',
+        property: 'assignedTo',
+        oldValue: 'Depot Stock',
+        newValue: `${request.requester.name} (${request.requester.department})`,
+        reason: isMismatch 
+          ? `Category override fulfillment for PR ${request.requestNumber}: ${payload.reason}` 
+          : `Fulfilled procurement request ${request.requestNumber}`,
+        procurementRequestNumber: request.requestNumber
+      };
+      assetLogs.push(assetLog);
 
+      updatedAssets.push({
+        ...targetAsset,
+        status: 'In Use',
+        assignedTo: {
+          name: request.requester.name,
+          email: request.requester.email,
+          department: request.department,
+          assignedDate: timestamp.slice(0, 10),
+          role: 'Procurement Assignee'
+        },
+        linkedProcurementId: request.requestNumber,
+        changeLogs: [assetLog, ...(targetAsset.changeLogs || [])]
+      });
+    }
+
+    const fulfilledTags = selectedAssets.map(a => a.assetTag);
     return {
       success: true,
       updatedRequest: {
@@ -402,14 +470,17 @@ export function transitionRequest(
         status: newState,
         stockFulfilled: true,
         overrideStockMismatch: categoryMismatch,
-        fulfilledAssetTags: [targetAsset.assetTag],
+        fulfilledAssetTags: Array.from(new Set([...request.fulfilledAssetTags, ...fulfilledTags])),
+        registeredAssetTags: Array.from(new Set([...request.registeredAssetTags, ...fulfilledTags])),
         approvals: [...request.approvals, itDecision],
         updatedAt: timestamp,
         auditLogs: [auditLog, ...request.auditLogs]
       },
       newAuditLog: auditLog,
-      affectedAsset: updatedAsset,
-      assetLog
+      affectedAssets: updatedAssets,
+      affectedAsset: updatedAssets[0],
+      assetLogs,
+      assetLog: assetLogs[0]
     };
   }
 
@@ -589,6 +660,12 @@ export function transitionRequest(
 
   // 8. Action: CREATE_PO
   if (action === 'CREATE_PO') {
+    if (actor.id !== 'purchasing' && actor.id !== 'purchasing_buyer') {
+      return {
+        success: false,
+        error: 'Only Purchasing Buyers can issue purchase orders.'
+      };
+    }
     if (request.status !== 'Purchasing Queue') {
       return {
         success: false,
@@ -668,6 +745,12 @@ export function transitionRequest(
 
   // 9. Action: MARK_SHIPPED
   if (action === 'MARK_SHIPPED') {
+    if (actor.id !== 'purchasing' && actor.id !== 'purchasing_buyer') {
+      return {
+        success: false,
+        error: 'Only Purchasing Buyers can mark orders shipped.'
+      };
+    }
     if (request.status !== 'Ordered') {
       return {
         success: false,
@@ -702,12 +785,34 @@ export function transitionRequest(
 
   // 10. Action: RECORD_RECEIPT
   if (action === 'RECORD_RECEIPT') {
-    if (request.status !== 'Ordered' && request.status !== 'Shipped' && request.status !== 'Received') {
+    // Role enforcement
+    if (actor.id !== 'purchasing' && actor.id !== 'purchasing_buyer' && actor.id !== 'asset_manager') {
       return {
         success: false,
-        error: `Cannot record receipt from status '${request.status}'.`
+        error: 'Unauthorized role for recording equipment deliveries. Only Purchasing Buyers or IT Asset Managers can record deliveries.'
       };
     }
+
+    // Receipts without a purchase order must be rejected
+    if (!request.purchaseOrder) {
+      return {
+        success: false,
+        error: 'Cannot record delivery receipt without an active purchase order.'
+      };
+    }
+
+    if (
+      request.status !== 'Ordered' && 
+      request.status !== 'Shipped' && 
+      request.status !== 'Partially Received' && 
+      request.status !== 'Received'
+    ) {
+      return {
+        success: false,
+        error: `Cannot record receipt from status '${request.status}'. Order must be in Ordered, Shipped, or Partially Received state.`
+      };
+    }
+
     if (!payload?.receipt) {
       return {
         success: false,
@@ -716,13 +821,39 @@ export function transitionRequest(
     }
 
     const receipt = payload.receipt;
-    const currentReceived = request.totalReceivedQuantity || 0;
-    const newTotalReceived = currentReceived + receipt.quantityReceived;
-    const orderedQuantity = request.purchaseOrder?.quantity ?? request.quantity;
+    // Reject zero or negative receipt quantities
+    if (!receipt.quantityReceived || receipt.quantityReceived <= 0) {
+      return {
+        success: false,
+        error: 'Receipt quantity must be at least 1 unit.'
+      };
+    }
 
-    const isFullyReceived = newTotalReceived >= orderedQuantity;
-    // Remains Received (or Asset Registration if fully delivered)
-    const newState: ProcurementStatus = isFullyReceived ? 'Asset Registration' : 'Received';
+    const currentReceived = request.totalReceivedQuantity || 0;
+    const orderedQuantity = request.purchaseOrder.quantity;
+
+    // Reject receipts after the full order has already arrived
+    if (currentReceived >= orderedQuantity) {
+      return {
+        success: false,
+        error: 'The full ordered quantity has already been received.'
+      };
+    }
+
+    const remainingExpected = orderedQuantity - currentReceived;
+    // Reject receipt quantities exceeding the remaining ordered quantity
+    if (receipt.quantityReceived > remainingExpected) {
+      return {
+        success: false,
+        error: `Receipt quantity (${receipt.quantityReceived}) exceeds remaining ordered quantity (${remainingExpected}).`
+      };
+    }
+
+    const newTotalReceived = currentReceived + receipt.quantityReceived;
+    const isFullArrival = newTotalReceived === orderedQuantity;
+
+    // Use Partially Received consistently for incomplete deliveries. Only move to Asset Registration when the exact full ordered quantity has been received.
+    const newState: ProcurementStatus = isFullArrival ? 'Asset Registration' : 'Partially Received';
 
     const auditLog: ProcurementAuditLog = {
       id: `audit-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
@@ -730,10 +861,10 @@ export function transitionRequest(
       actor: actor.name,
       role: actor.badge,
       requestNumber: request.requestNumber,
-      action: isFullyReceived ? 'Full Delivery Received' : 'Partial Delivery Received',
+      action: isFullArrival ? 'Full Delivery Received' : 'Partial Delivery Received',
       previousState,
       newState,
-      notes: `Received ${receipt.quantityReceived} units (Total received: ${newTotalReceived}/${orderedQuantity}). Slip Ref: ${receipt.deliveryReference}. Receiver: ${receipt.receiver}.`
+      notes: `Received ${receipt.quantityReceived} unit(s) (Total received: ${newTotalReceived}/${orderedQuantity}). Slip Ref: ${receipt.deliveryReference}. Receiver: ${receipt.receiver}.`
     };
 
     return {
@@ -752,30 +883,113 @@ export function transitionRequest(
 
   // 11. Action: REGISTER_AND_ASSIGN_ASSETS
   if (action === 'REGISTER_AND_ASSIGN_ASSETS') {
-    if (request.status !== 'Asset Registration' && request.status !== 'Received') {
+    if (actor.id !== 'asset_manager') {
       return {
         success: false,
-        error: `Cannot register and assign assets from status '${request.status}'.`
-      };
-    }
-    if (!payload?.registeredAssetTags || payload.registeredAssetTags.length === 0) {
-      return {
-        success: false,
-        error: 'At least one registered asset tag is required.'
+        error: 'Only IT Asset Managers can register and assign assets.'
       };
     }
 
-    const newState: ProcurementStatus = 'Assigned/Fulfilled';
+    // Only allow registration from Asset Registration
+    if (request.status !== 'Asset Registration') {
+      return {
+        success: false,
+        error: `Cannot register assets from status '${request.status}'. Registration is only permitted in 'Asset Registration'.`
+      };
+    }
+
+    const totalOrdered = request.purchaseOrder?.quantity ?? request.quantity;
+    if ((request.totalReceivedQuantity || 0) < totalOrdered) {
+      return {
+        success: false,
+        error: 'Cannot register assets until the complete ordered quantity has been received.'
+      };
+    }
+
+    const newAssets = payload?.newAssets || [];
+    const registeredTags = payload?.registeredAssetTags || newAssets.map(a => a.assetTag);
+
+    if (newAssets.length === 0 && registeredTags.length === 0) {
+      return {
+        success: false,
+        error: 'At least one registered asset is required.'
+      };
+    }
+
+    // Check duplicates within the current batch
+    const batchSerials = new Set<string>();
+    const batchTags = new Set<string>();
+    const batchBarcodes = new Set<string>();
+
+    for (const a of newAssets) {
+      const s = a.serialNumber?.trim().toUpperCase();
+      const t = a.assetTag?.trim().toUpperCase();
+      const b = a.barcode?.trim();
+
+      if (s) {
+        if (batchSerials.has(s)) {
+          return { success: false, error: `Duplicate serial number '${a.serialNumber}' within registration batch.` };
+        }
+        batchSerials.add(s);
+      }
+      if (t) {
+        if (batchTags.has(t)) {
+          return { success: false, error: `Duplicate asset tag '${a.assetTag}' within registration batch.` };
+        }
+        batchTags.add(t);
+      }
+      if (b) {
+        if (batchBarcodes.has(b)) {
+          return { success: false, error: `Duplicate barcode '${a.barcode}' within registration batch.` };
+        }
+        batchBarcodes.add(b);
+      }
+    }
+
+    // Check duplicates against existing inventory
+    if (payload?.availableAssets) {
+      for (const a of newAssets) {
+        const s = a.serialNumber?.trim().toUpperCase();
+        const t = a.assetTag?.trim().toUpperCase();
+        const b = a.barcode?.trim();
+
+        if (s && payload.availableAssets.some(ex => ex.id !== a.id && ex.serialNumber?.trim().toUpperCase() === s)) {
+          return { success: false, error: `Serial number '${a.serialNumber}' already exists in inventory.` };
+        }
+        if (t && payload.availableAssets.some(ex => ex.id !== a.id && ex.assetTag?.trim().toUpperCase() === t)) {
+          return { success: false, error: `Asset tag '${a.assetTag}' already exists in inventory.` };
+        }
+        if (b && payload.availableAssets.some(ex => ex.id !== a.id && ex.barcode?.trim() === b)) {
+          return { success: false, error: `Barcode '${a.barcode}' already exists in inventory.` };
+        }
+      }
+    }
+
+    // Calculate unique total registered tags
+    const updatedRegisteredTags = Array.from(new Set([...request.registeredAssetTags, ...registeredTags]));
+    
+    // Determine which assets are assigned
+    const assignedTagsFromBatch = newAssets.filter(a => a.assignedTo !== null && a.status === 'In Use').map(a => a.assetTag);
+    const updatedFulfilledTags = Array.from(new Set([...request.fulfilledAssetTags, ...assignedTagsFromBatch]));
+
+    const allRegistered = updatedRegisteredTags.length >= totalOrdered;
+    const allAssigned = updatedFulfilledTags.length >= totalOrdered;
+
+    // Only move to 'Assigned/Fulfilled' if complete quantity received, registered, AND assigned
+    const newState: ProcurementStatus = (allRegistered && allAssigned) ? 'Assigned/Fulfilled' : 'Asset Registration';
+
     const auditLog: ProcurementAuditLog = {
       id: `audit-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
       timestamp,
       actor: actor.name,
       role: actor.badge,
       requestNumber: request.requestNumber,
-      action: 'Equipment Registered & Assigned',
+      action: (allRegistered && allAssigned) ? 'Equipment Registered & Assigned' : 'Equipment Registered to Depot',
       previousState,
       newState,
-      notes: `Registered ${payload.registeredAssetTags.length} hardware units (${payload.registeredAssetTags.join(', ')}) and assigned custody to ${request.requester.name}.`
+      notes: (allRegistered && allAssigned)
+        ? `Registered and assigned all ${totalOrdered} units (${updatedFulfilledTags.join(', ')}) to ${request.requester.name}.`
+        : `Registered ${registeredTags.length} unit(s). ${updatedFulfilledTags.length}/${totalOrdered} assigned to requester.`
     };
 
     return {
@@ -783,17 +997,24 @@ export function transitionRequest(
       updatedRequest: {
         ...request,
         status: newState,
-        registeredAssetTags: Array.from(new Set([...request.registeredAssetTags, ...payload.registeredAssetTags])),
-        fulfilledAssetTags: Array.from(new Set([...request.fulfilledAssetTags, ...payload.registeredAssetTags])),
+        registeredAssetTags: updatedRegisteredTags,
+        fulfilledAssetTags: updatedFulfilledTags,
         updatedAt: timestamp,
         auditLogs: [auditLog, ...request.auditLogs]
       },
-      newAuditLog: auditLog
+      newAuditLog: auditLog,
+      createdAssets: newAssets
     };
   }
 
   // 12. Action: CLOSE
   if (action === 'CLOSE') {
+    if (actor.id !== 'asset_manager') {
+      return {
+        success: false,
+        error: 'Only IT Asset Managers can close procurement requests.'
+      };
+    }
     if (request.status !== 'Assigned/Fulfilled') {
       return {
         success: false,
@@ -828,7 +1049,21 @@ export function transitionRequest(
 
   // 13. Action: CANCEL
   if (action === 'CANCEL') {
-    if (request.status !== 'Draft' && request.status !== 'Submitted' && request.status !== 'IT Head Review' && request.status !== 'Changes Requested') {
+    const isRequester = actor.email.toLowerCase() === request.requester.email.toLowerCase() ||
+                        actor.name.toLowerCase() === request.requester.name.toLowerCase() ||
+                        actor.id === 'requester';
+    if (!isRequester && actor.id !== 'it_head' && actor.id !== 'asset_manager') {
+      return {
+        success: false,
+        error: 'Only the requester or IT management can cancel this request.'
+      };
+    }
+    if (
+      request.status !== 'Draft' && 
+      request.status !== 'Submitted' && 
+      request.status !== 'IT Head Review' && 
+      request.status !== 'Changes Requested'
+    ) {
       return {
         success: false,
         error: `Cannot cancel request from status '${request.status}'. Active financial commitments or POs cannot be cancelled unilaterally.`
@@ -845,7 +1080,7 @@ export function transitionRequest(
       action: 'Request Cancelled',
       previousState,
       newState,
-      notes: payload?.notes || 'Cancelled by requester.'
+      notes: payload?.notes || payload?.reason || 'Cancelled by user.'
     };
 
     return {
@@ -958,6 +1193,7 @@ export function filterProcurementRequests(
         r.status === 'Purchasing Queue' || 
         r.status === 'Ordered' || 
         r.status === 'Shipped' || 
+        r.status === 'Partially Received' ||
         r.status === 'Received' || 
         r.status === 'Asset Registration'
       );

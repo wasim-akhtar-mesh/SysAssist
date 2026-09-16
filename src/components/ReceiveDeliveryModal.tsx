@@ -42,8 +42,16 @@ export const ReceiveDeliveryModal: React.FC<ReceiveDeliveryModalProps> = ({
   const willBeFullyReceived = alreadyReceived + quantityReceived >= totalOrdered;
 
   const handleConfirm = () => {
+    if (alreadyReceived >= totalOrdered) {
+      setValidationError('The full ordered quantity has already been received.');
+      return;
+    }
     if (quantityReceived <= 0) {
       setValidationError('Quantity received must be at least 1.');
+      return;
+    }
+    if (quantityReceived > (totalOrdered - alreadyReceived)) {
+      setValidationError(`Receipt quantity (${quantityReceived}) exceeds remaining expected quantity (${totalOrdered - alreadyReceived}).`);
       return;
     }
     if (!deliveryReference.trim()) {

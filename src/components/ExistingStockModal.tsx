@@ -8,17 +8,18 @@ import {
   Laptop, 
   Monitor, 
   Cpu,
-  ArrowRight
+  ArrowRight,
+  Check
 } from 'lucide-react';
 import { Asset, ProcurementRequest } from '../types';
-import { SkeuoButton, LedIndicator } from './SkeuoComponents';
+import { SkeuoButton } from './SkeuoComponents';
 
 interface ExistingStockModalProps {
   isOpen: boolean;
   onClose: () => void;
   request: ProcurementRequest;
   availableAssets: Asset[];
-  onConfirmFulfillment: (assetId: string, overrideMismatch: boolean, reason?: string) => void;
+  onConfirmFulfillment: (assetIds: string[], overrideMismatch: boolean, reason?: string) => void;
 }
 
 export const ExistingStockModal: React.FC<ExistingStockModalProps> = ({
@@ -30,30 +31,48 @@ export const ExistingStockModal: React.FC<ExistingStockModalProps> = ({
 }) => {
   if (!isOpen) return null;
 
-  // Only consider currently available In Stock items
-  const inStockAssets = availableAssets.filter(a => a.status === 'In Stock');
+  // Only consider currently available In Stock items that are unassigned
+  const inStockAssets = availableAssets.filter(a => a.status === 'In Stock' && a.assignedTo === null);
   const matchingCategoryAssets = inStockAssets.filter(a => a.category === request.category);
-  const otherCategoryAssets = inStockAssets.filter(a => a.category !== request.category);
 
-  const [selectedAssetId, setSelectedAssetId] = useState<string>(
-    matchingCategoryAssets[0]?.id || inStockAssets[0]?.id || ''
+  // Initial selection: prefer matching category assets up to required quantity
+  const initialSelection = matchingCategoryAssets.slice(0, request.quantity).map(a => a.id);
+  const [selectedAssetIds, setSelectedAssetIds] = useState<string[]>(
+    initialSelection.length > 0 ? initialSelection : inStockAssets.slice(0, request.quantity).map(a => a.id)
   );
   const [allowCategoryMismatch, setAllowCategoryMismatch] = useState<boolean>(false);
   const [overrideReason, setOverrideReason] = useState<string>('');
   const [validationError, setValidationError] = useState<string>('');
 
-  const selectedAsset = inStockAssets.find(a => a.id === selectedAssetId);
-  const isCategoryMismatch = Boolean(selectedAsset && selectedAsset.category !== request.category);
+  const selectedAssets = inStockAssets.filter(a => selectedAssetIds.includes(a.id));
+  const isCategoryMismatch = selectedAssets.some(a => a.category !== request.category);
+  const mismatchedCategories = Array.from(new Set(selectedAssets.filter(a => a.category !== request.category).map(a => a.category)));
+
+  const toggleAssetSelection = (assetId: string) => {
+    if (selectedAssetIds.includes(assetId)) {
+      setSelectedAssetIds(prev => prev.filter(id => id !== assetId));
+    } else {
+      if (request.quantity === 1) {
+        setSelectedAssetIds([assetId]);
+      } else if (selectedAssetIds.length < request.quantity) {
+        setSelectedAssetIds(prev => [...prev, assetId]);
+      } else {
+        setValidationError(`Maximum allocation reached (${request.quantity} units). Deselect an asset first to change selection.`);
+        return;
+      }
+    }
+    setValidationError('');
+  };
 
   const handleConfirm = () => {
-    if (!selectedAsset) {
-      setValidationError('Please select an in-stock asset to fulfill this request.');
+    if (selectedAssetIds.length !== request.quantity) {
+      setValidationError(`Please select exactly ${request.quantity} in-stock asset(s) to fulfill this request (currently selected: ${selectedAssetIds.length}).`);
       return;
     }
 
     if (isCategoryMismatch) {
       if (!allowCategoryMismatch) {
-        setValidationError(`Selected asset category (${selectedAsset.category}) does not match requested category (${request.category}). Check the explicit override box to proceed.`);
+        setValidationError(`One or more selected assets (${mismatchedCategories.join(', ')}) do not match the requested category (${request.category}). Check the explicit override box to proceed.`);
         return;
       }
       if (!overrideReason.trim()) {
@@ -63,9 +82,11 @@ export const ExistingStockModal: React.FC<ExistingStockModalProps> = ({
     }
 
     setValidationError('');
-    onConfirmFulfillment(selectedAsset.id, isCategoryMismatch, overrideReason.trim() || undefined);
+    onConfirmFulfillment(selectedAssetIds, isCategoryMismatch, overrideReason.trim() || undefined);
     onClose();
   };
+
+  const isFullSelection = selectedAssetIds.length === request.quantity;
 
   return (
     <div 
@@ -117,10 +138,10 @@ export const ExistingStockModal: React.FC<ExistingStockModalProps> = ({
             </div>
             <div className="text-right">
               <span className="text-[10px] uppercase font-bold text-[#686B6D] block">
-                Required Units
+                Allocation Progress
               </span>
-              <span className="text-sm font-mono font-bold text-[#181A1B]">
-                {request.quantity}x unit(s)
+              <span className={`text-sm font-mono font-bold ${isFullSelection ? 'text-[#0F682C]' : 'text-[#C66A2B]'}`}>
+                {selectedAssetIds.length} / {request.quantity} unit(s)
               </span>
             </div>
           </div>
@@ -136,7 +157,10 @@ export const ExistingStockModal: React.FC<ExistingStockModalProps> = ({
           <div>
             <div className="flex items-center justify-between mb-2">
               <span className="text-[11px] font-bold uppercase tracking-wider text-[#686B6D]">
-                Available Compatible Depot Inventory ({matchingCategoryAssets.length} units found)
+                Available Compatible Depot Inventory ({matchingCategoryAssets.length} matching category, {inStockAssets.length} total in stock)
+              </span>
+              <span className="text-[11px] text-[#505457]">
+                {request.quantity > 1 ? `Select exactly ${request.quantity} units` : 'Select 1 unit'}
               </span>
             </div>
 
@@ -148,13 +172,13 @@ export const ExistingStockModal: React.FC<ExistingStockModalProps> = ({
               <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
                 {inStockAssets.map(asset => {
                   const isMatch = asset.category === request.category;
-                  const isSelected = selectedAssetId === asset.id;
+                  const isSelected = selectedAssetIds.includes(asset.id);
 
                   return (
                     <button
                       key={asset.id}
                       type="button"
-                      onClick={() => setSelectedAssetId(asset.id)}
+                      onClick={() => toggleAssetSelection(asset.id)}
                       className={`w-full text-left p-2.5 rounded-md border transition-all cursor-pointer flex items-center justify-between gap-3 ${
                         isSelected 
                           ? 'border-[#C66A2B] bg-[#C66A2B]/10 ring-1 ring-[#C66A2B]' 
@@ -183,8 +207,10 @@ export const ExistingStockModal: React.FC<ExistingStockModalProps> = ({
                         </div>
                       </div>
 
-                      <div className="w-5 h-5 rounded-full border border-[#C5C3BC] flex items-center justify-center shrink-0">
-                        {isSelected && <div className="w-3 h-3 rounded-full bg-[#C66A2B]" />}
+                      <div className={`w-5 h-5 rounded border flex items-center justify-center shrink-0 ${
+                        isSelected ? 'bg-[#C66A2B] border-[#C66A2B] text-white' : 'border-[#C5C3BC]'
+                      }`}>
+                        {isSelected && <Check className="w-3.5 h-3.5" />}
                       </div>
                     </button>
                   );
@@ -201,7 +227,7 @@ export const ExistingStockModal: React.FC<ExistingStockModalProps> = ({
                 <div>
                   <span className="font-bold block">Category Mismatch Warning</span>
                   <span>
-                    You selected a <strong>{selectedAsset?.category}</strong>, but the request is for a <strong>{request.category}</strong>.
+                    Selected assets include alternate category ({mismatchedCategories.join(', ')}), differing from requested ({request.category}). IT Head authorization and written justification are required.
                   </span>
                 </div>
               </div>
@@ -225,7 +251,7 @@ export const ExistingStockModal: React.FC<ExistingStockModalProps> = ({
                     type="text"
                     value={overrideReason}
                     onChange={e => setOverrideReason(e.target.value)}
-                    placeholder="Explain technical rationale for fulfilling an alternate equipment category."
+                    placeholder="Explain technical rationale for fulfilling alternate equipment."
                     className="w-full h-8 px-2.5 text-xs bg-[#FAF9F5] border border-[#C5C3BC] rounded text-[#181A1B] focus:border-[#C66A2B] focus:outline-hidden"
                   />
                 </div>
@@ -248,10 +274,10 @@ export const ExistingStockModal: React.FC<ExistingStockModalProps> = ({
             size="sm"
             variant="primary"
             onClick={handleConfirm}
-            disabled={inStockAssets.length === 0}
+            disabled={inStockAssets.length < request.quantity || selectedAssetIds.length !== request.quantity}
             icon={<CheckCircle2 className="w-3.5 h-3.5" />}
           >
-            Confirm Allocation & Fulfill
+            Confirm Allocation & Fulfill ({selectedAssetIds.length}/{request.quantity})
           </SkeuoButton>
         </div>
       </div>
