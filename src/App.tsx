@@ -43,7 +43,8 @@ export const DEFAULT_ROLES: SimulatedUserRole[] = [
     email: 'wasim.akhtar@meshconnect.internal',
     department: 'Hardware Operations',
     badge: 'IT Lead',
-    description: 'IT Operations Head & Fleet Custodian'
+    description: 'IT Operations Head & Fleet Custodian',
+    exportScope: 'Operational Requests, Stock Replenishment, and System Summaries'
   },
   {
     id: 'requester',
@@ -51,7 +52,8 @@ export const DEFAULT_ROLES: SimulatedUserRole[] = [
     email: 'elena.rostova@meshconnect.internal',
     department: 'Engineering Infrastructure',
     badge: 'Requester',
-    description: 'Staff Engineer & Hardware Requester'
+    description: 'Staff Engineer & Hardware Requester',
+    exportScope: 'Personal Procurement Requests only'
   },
   {
     id: 'finance',
@@ -59,7 +61,8 @@ export const DEFAULT_ROLES: SimulatedUserRole[] = [
     email: 'marcus.vance@meshconnect.internal',
     department: 'Finance & Budget',
     badge: 'Finance Controller',
-    description: 'Financial Controller & Budget Authority'
+    description: 'Financial Controller & Budget Authority',
+    exportScope: 'Procurement Requests, Spend Analysis, and Asset Valuation'
   },
   {
     id: 'purchasing_buyer',
@@ -67,7 +70,17 @@ export const DEFAULT_ROLES: SimulatedUserRole[] = [
     email: 'diana.sterling@meshconnect.internal',
     department: 'Procurement & Vendor Ops',
     badge: 'Purchasing Buyer',
-    description: 'Procurement Specialist & Vendor PO Issuer'
+    description: 'Procurement Specialist & Vendor PO Issuer',
+    exportScope: 'Purchasing Queue, Purchase Orders, Vendors, and Deliveries'
+  },
+  {
+    id: 'asset_manager',
+    name: 'Kenji Sato',
+    email: 'kenji.sato@meshconnect.internal',
+    department: 'Depot Operations',
+    badge: 'IT Asset Manager',
+    description: 'Logistics Custodian & Asset Registrar',
+    exportScope: 'Complete Fleet Inventory, Receiving, Registrations, and Audit Trail'
   }
 ];
 
@@ -504,6 +517,7 @@ export default function App() {
             <AssetListView
               section="laptops"
               assets={assets}
+              currentUserRole={activeRole}
               initialStatusFilter={laptopStatusFilter}
               onSelectAsset={(asset) => setSelectedAsset(asset)}
               onOpenScanner={() => setIsScannerOpen(true)}
@@ -519,6 +533,7 @@ export default function App() {
             <AssetListView
               section="peripherals"
               assets={assets}
+              currentUserRole={activeRole}
               initialCategoryFilter={peripheralCategoryFilter}
               onSelectAsset={(asset) => setSelectedAsset(asset)}
               onOpenScanner={() => setIsScannerOpen(true)}

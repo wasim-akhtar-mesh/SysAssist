@@ -21,7 +21,7 @@ import {
 } from '../types';
 import { SkeuoButton } from './SkeuoComponents';
 import { generateUniqueProcurementNumber } from '../utils/idGenerator';
-import { validateSubmission } from '../services/procurementService';
+import { validateSubmission, transitionRequest } from '../services/procurementService';
 
 interface ProcurementRequestModalProps {
   isOpen: boolean;
@@ -80,7 +80,7 @@ export const ProcurementRequestModal: React.FC<ProcurementRequestModalProps> = (
       requester: initialData?.requester || {
         name: currentUser.name,
         email: currentUser.email,
-        department
+        department: department || currentUser.department
       },
       department,
       manager,
@@ -106,17 +106,17 @@ export const ProcurementRequestModal: React.FC<ProcurementRequestModalProps> = (
       totalReceivedQuantity: initialData?.totalReceivedQuantity || 0,
       registeredAssetTags: initialData?.registeredAssetTags || [],
       fulfilledAssetTags: initialData?.fulfilledAssetTags || [],
-      auditLogs: initialData?.auditLogs || [
+      auditLogs: initialData?.auditLogs && initialData.auditLogs.length > 0 ? initialData.auditLogs : [
         {
           id: `audit-${Date.now()}`,
           timestamp: now,
           actor: currentUser.name,
           role: currentUser.badge,
           requestNumber,
-          action: status === 'Draft' ? 'Draft Created' : 'Request Submitted',
+          action: 'Draft Created',
           previousState: 'None',
-          newState: status,
-          notes: status === 'Draft' ? 'Unfinished draft saved.' : 'Initial submission for IT Head evaluation.'
+          newState: 'Draft',
+          notes: 'Unfinished draft saved.'
         }
       ]
     };
@@ -129,14 +129,24 @@ export const ProcurementRequestModal: React.FC<ProcurementRequestModalProps> = (
   };
 
   const handleSubmitClick = () => {
-    const request = buildRequestObject('IT Head Review');
-    const result = validateSubmission(request);
-    if (!result.valid) {
-      setValidationErrors(result.errors);
+    // 1. Every newly created request begins as Draft
+    const draft = buildRequestObject('Draft');
+
+    // 4. Failed validation or authorization leaves the request as Draft in storage
+    onSaveDraft(draft);
+
+    // Check submission validity using transitionRequest engine
+    const action = (initialData?.status === 'Changes Requested') ? 'RESUBMIT' : 'SUBMIT';
+    const transitionResult = transitionRequest(draft, action, currentUser);
+
+    if (!transitionResult.success) {
+      setValidationErrors([transitionResult.error || 'Submission authorization failed. Request remains saved as Draft.']);
       return;
     }
+
     setValidationErrors([]);
-    onSubmitRequest(request);
+    // 3. Only the transition engine can move it to IT Head Review
+    onSubmitRequest(transitionResult.updatedRequest!);
     onClose();
   };
 

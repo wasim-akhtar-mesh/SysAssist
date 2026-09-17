@@ -19,7 +19,8 @@ export const SIMULATED_ROLES: Record<ProcurementRole, SimulatedUserRole> = {
     email: 'elena.rostova@meshconnect.internal',
     title: 'Senior Systems Architect',
     department: 'Engineering Infrastructure',
-    badge: 'Requester'
+    badge: 'Requester',
+    exportScope: 'Personal Procurement Requests only'
   },
   it_head: {
     id: 'it_head',
@@ -27,7 +28,8 @@ export const SIMULATED_ROLES: Record<ProcurementRole, SimulatedUserRole> = {
     email: 'wasim.akhtar@meshconnect.internal',
     title: 'IT Lead & Infrastructure Head',
     department: 'Hardware Operations',
-    badge: 'IT Head'
+    badge: 'IT Head',
+    exportScope: 'Operational Requests, Stock Replenishment, and System Summaries'
   },
   finance: {
     id: 'finance',
@@ -35,7 +37,8 @@ export const SIMULATED_ROLES: Record<ProcurementRole, SimulatedUserRole> = {
     email: 'marcus.vance@meshconnect.internal',
     title: 'Financial Controller & VP Finance',
     department: 'Finance & Compliance',
-    badge: 'Finance Approver'
+    badge: 'Finance Approver',
+    exportScope: 'Procurement Requests, Spend Analysis, and Asset Valuation'
   },
   purchasing: {
     id: 'purchasing',
@@ -43,7 +46,8 @@ export const SIMULATED_ROLES: Record<ProcurementRole, SimulatedUserRole> = {
     email: 'diana.sterling@meshconnect.internal',
     title: 'Principal Procurement Buyer',
     department: 'Global Sourcing',
-    badge: 'Purchasing Buyer'
+    badge: 'Purchasing Buyer',
+    exportScope: 'Purchasing Queue, Purchase Orders, Vendors, and Deliveries'
   },
   purchasing_buyer: {
     id: 'purchasing_buyer',
@@ -51,7 +55,8 @@ export const SIMULATED_ROLES: Record<ProcurementRole, SimulatedUserRole> = {
     email: 'diana.sterling@meshconnect.internal',
     title: 'Principal Procurement Buyer',
     department: 'Global Sourcing',
-    badge: 'Purchasing Buyer'
+    badge: 'Purchasing Buyer',
+    exportScope: 'Purchasing Queue, Purchase Orders, Vendors, and Deliveries'
   },
   asset_manager: {
     id: 'asset_manager',
@@ -59,7 +64,8 @@ export const SIMULATED_ROLES: Record<ProcurementRole, SimulatedUserRole> = {
     email: 'kenji.sato@meshconnect.internal',
     title: 'IT Logistics Custodian',
     department: 'Depot Operations',
-    badge: 'IT Asset Manager'
+    badge: 'IT Asset Manager',
+    exportScope: 'Complete Fleet Inventory, Receiving, Registrations, and Audit Trail'
   }
 };
 
@@ -73,6 +79,21 @@ export interface TransitionResult {
   assetLog?: ChangeLogEntry;
   assetLogs?: ChangeLogEntry[];
   createdAssets?: Asset[];
+}
+
+/**
+ * Stable identity comparison: determines if an actor is the true owner of a request.
+ * Does not treat actor.id === 'requester' as proof of ownership.
+ */
+export function isActorRequestOwner(request: ProcurementRequest, actor: SimulatedUserRole): boolean {
+  if (!actor || !request?.requester) return false;
+  const actorEmail = (actor.email || '').toLowerCase().trim();
+  const reqEmail = (request.requester.email || '').toLowerCase().trim();
+  if (actorEmail && reqEmail && actorEmail === reqEmail) return true;
+  const actorName = (actor.name || '').toLowerCase().trim();
+  const reqName = (request.requester.name || '').toLowerCase().trim();
+  if (actorName && reqName && actorName === reqName) return true;
+  return false;
 }
 
 /**
@@ -216,13 +237,11 @@ export function transitionRequest(
         error: `Cannot submit request from status '${request.status}'. Only Draft or Changes Requested can be submitted.`
       };
     }
-    const isRequester = actor.email.toLowerCase() === request.requester.email.toLowerCase() ||
-                        actor.name.toLowerCase() === request.requester.name.toLowerCase() ||
-                        actor.id === 'requester';
-    if (!isRequester && actor.id !== 'it_head') {
+    const isOwner = isActorRequestOwner(request, actor);
+    if (!isOwner) {
       return {
         success: false,
-        error: 'Only the requester can submit or resubmit this procurement request.'
+        error: 'Only the request owner can submit or resubmit this procurement request.'
       };
     }
     const validation = validateSubmission(request);
@@ -502,7 +521,19 @@ export function transitionRequest(
     if (request.status !== 'IT Head Review') {
       return {
         success: false,
-        error: `Cannot reject/request changes from status '${request.status}'.`
+        error: `Cannot reject/request changes from status '${request.status}'. Required status is 'IT Head Review'.`
+      };
+    }
+    if (actor.id !== 'it_head') {
+      return {
+        success: false,
+        error: 'Only the IT Head can reject or request changes on requests in IT Head Review.'
+      };
+    }
+    if (isActorRequestOwner(request, actor)) {
+      return {
+        success: false,
+        error: 'Requester cannot reject or request changes on their own procurement request.'
       };
     }
     if (!payload?.reason?.trim()) {
@@ -623,7 +654,19 @@ export function transitionRequest(
     if (request.status !== 'Finance Review') {
       return {
         success: false,
-        error: `Cannot reject/request changes from status '${request.status}'.`
+        error: `Cannot reject/request changes from status '${request.status}'. Required status is 'Finance Review'.`
+      };
+    }
+    if (actor.id !== 'finance') {
+      return {
+        success: false,
+        error: 'Only the Finance Approver can reject or request changes on requests in Finance Review.'
+      };
+    }
+    if (isActorRequestOwner(request, actor)) {
+      return {
+        success: false,
+        error: 'Requester cannot reject or request changes on their own procurement request.'
       };
     }
     if (!payload?.reason?.trim()) {
@@ -896,7 +939,7 @@ export function transitionRequest(
 
   // 11. Action: REGISTER_AND_ASSIGN_ASSETS
   if (action === 'REGISTER_AND_ASSIGN_ASSETS') {
-    if (actor.id !== 'asset_manager' && actor.id !== 'it_head') {
+    if (actor.id !== 'asset_manager') {
       return {
         success: false,
         error: 'Only IT Asset Managers can register and assign assets.'
@@ -1022,13 +1065,11 @@ export function transitionRequest(
 
   // 12. Action: CLOSE
   if (action === 'CLOSE') {
-    const isRequester = actor.email.toLowerCase() === request.requester.email.toLowerCase() ||
-                        actor.name.toLowerCase() === request.requester.name.toLowerCase() ||
-                        actor.id === 'requester';
-    if (!isRequester && actor.id !== 'it_head' && actor.id !== 'asset_manager') {
+    const isOwner = isActorRequestOwner(request, actor);
+    if (!isOwner && actor.id !== 'it_head' && actor.id !== 'asset_manager') {
       return {
         success: false,
-        error: 'Only the Requester, IT Head, or IT Asset Manager can close procurement requests.'
+        error: 'Only the request owner, IT Head, or IT Asset Manager can close procurement requests.'
       };
     }
     if (request.status !== 'Assigned/Fulfilled') {
@@ -1065,13 +1106,11 @@ export function transitionRequest(
 
   // 13. Action: CANCEL
   if (action === 'CANCEL') {
-    const isRequester = actor.email.toLowerCase() === request.requester.email.toLowerCase() ||
-                        actor.name.toLowerCase() === request.requester.name.toLowerCase() ||
-                        actor.id === 'requester';
-    if (!isRequester && actor.id !== 'it_head' && actor.id !== 'asset_manager') {
+    const isOwner = isActorRequestOwner(request, actor);
+    if (!isOwner && actor.id !== 'it_head') {
       return {
         success: false,
-        error: 'Only the requester or IT management can cancel this request.'
+        error: 'Only the request owner or IT Head can cancel this procurement request.'
       };
     }
     if (
@@ -1129,10 +1168,14 @@ export function canUserApproveRequest(request: ProcurementRequest, actor: Simula
 }
 
 /**
- * Checks whether a request can be edited in its current state
+ * Checks whether a request can be edited in its current state.
+ * If actor is provided, ensures only the request owner can edit.
  */
-export function isRequestEditable(request: ProcurementRequest): boolean {
-  return request.status === 'Draft' || request.status === 'Changes Requested';
+export function isRequestEditable(request: ProcurementRequest, actor?: SimulatedUserRole): boolean {
+  const isStatusEditable = request.status === 'Draft' || request.status === 'Changes Requested';
+  if (!isStatusEditable) return false;
+  if (!actor) return true;
+  return isActorRequestOwner(request, actor);
 }
 
 /**
@@ -1187,10 +1230,7 @@ export function filterProcurementRequests(
 ): ProcurementRequest[] {
   switch (view) {
     case 'my_requests':
-      return requests.filter(r => 
-        r.requester.email.toLowerCase() === currentUser.email.toLowerCase() ||
-        r.requester.name.toLowerCase() === currentUser.name.toLowerCase()
-      );
+      return requests.filter(r => isActorRequestOwner(r, currentUser));
 
     case 'awaiting_approval':
       return requests.filter(r => {

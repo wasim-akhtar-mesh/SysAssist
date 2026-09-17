@@ -16,13 +16,17 @@ import {
   Mouse,
   Headphones
 } from 'lucide-react';
-import { Asset, InventoryThreshold, AssetCategory } from '../types';
+import { Asset, InventoryThreshold, AssetCategory, SimulatedUserRole } from '../types';
 import { SkeuoButton, LedIndicator, SegmentedDisplay, StatusBadge } from './SkeuoComponents';
 import { getCategoryStockAssessments } from '../utils/inventorySelectors';
+import { ExportMenu, ExportOption } from './ExportMenu';
+import { exportStockAssessments, exportInventory, exportInventoryValuation, canRoleExport } from '../services/exportService';
+import { SIMULATED_ROLES } from '../services/procurementService';
 
 interface AutomatedInventoryTrackerProps {
   assets: Asset[];
   thresholds: InventoryThreshold[];
+  currentUserRole?: SimulatedUserRole;
   onDraftProcurementTicket: (item: { category: string; modelName: string; quantityToOrder: number }) => void;
   onOpenAssetDetail: (asset: Asset) => void;
 }
@@ -30,6 +34,7 @@ interface AutomatedInventoryTrackerProps {
 export const AutomatedInventoryTracker: React.FC<AutomatedInventoryTrackerProps> = ({
   assets,
   thresholds,
+  currentUserRole,
   onDraftProcurementTicket,
   onOpenAssetDetail
 }) => {
@@ -141,9 +146,53 @@ export const AutomatedInventoryTracker: React.FC<AutomatedInventoryTrackerProps>
               Fleet Equipment Stock & Reserve Breakdown
             </h3>
           </div>
-          <span className="text-xs text-[#686B6D]">
-            {assets.length} total units cataloged
-          </span>
+          <div className="flex items-center gap-3">
+            <ExportMenu
+              buttonSize="sm"
+              variant="standard"
+              label="Export"
+              options={[
+                {
+                  id: 'stock_breakdown',
+                  label: `Stock Assessment Breakdown (${categoryAssessments.length})`,
+                  count: categoryAssessments.length,
+                  disabled: currentUserRole ? !canRoleExport(currentUserRole, 'stock_assessment').allowed : false,
+                  disabledReason: currentUserRole ? canRoleExport(currentUserRole, 'stock_assessment').reason : undefined,
+                  onExport: () => exportStockAssessments(
+                    categoryAssessments,
+                    currentUserRole || SIMULATED_ROLES.it_head
+                  )
+                },
+                {
+                  id: 'in_stock_depot',
+                  label: `Depot Available Units (${inStockTotal})`,
+                  count: inStockTotal,
+                  disabled: currentUserRole ? !canRoleExport(currentUserRole, 'inventory').allowed : false,
+                  disabledReason: currentUserRole ? canRoleExport(currentUserRole, 'inventory').reason : undefined,
+                  onExport: () => exportInventory(
+                    assets.filter(a => a.status === 'In Stock'),
+                    'Depot In-Stock Reserve Hardware',
+                    currentUserRole || SIMULATED_ROLES.it_head,
+                    'All'
+                  )
+                },
+                {
+                  id: 'stock_valuation',
+                  label: `Complete Fleet Valuation (${assets.length})`,
+                  count: assets.length,
+                  disabled: currentUserRole ? !canRoleExport(currentUserRole, 'inventory_valuation').allowed : false,
+                  disabledReason: currentUserRole ? canRoleExport(currentUserRole, 'inventory_valuation').reason : undefined,
+                  onExport: () => exportInventoryValuation(
+                    assets,
+                    currentUserRole || SIMULATED_ROLES.it_head
+                  )
+                }
+              ]}
+            />
+            <span className="text-xs text-[#686B6D] hidden sm:inline">
+              {assets.length} total units cataloged
+            </span>
+          </div>
         </div>
 
         <div className="overflow-x-auto w-full">

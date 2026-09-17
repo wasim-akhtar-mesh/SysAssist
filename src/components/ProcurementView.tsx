@@ -44,6 +44,13 @@ import { ExistingStockModal } from './ExistingStockModal';
 import { CreatePOModal } from './CreatePOModal';
 import { ReceiveDeliveryModal } from './ReceiveDeliveryModal';
 import { RegisterAssetsModal } from './RegisterAssetsModal';
+import { ExportMenu, ExportOption } from './ExportMenu';
+import { 
+  exportProcurementRequests, 
+  exportProcurementSpendSummary, 
+  exportPurchasingQueue, 
+  canRoleExport 
+} from '../services/exportService';
 
 interface ProcurementViewProps {
   requests: ProcurementRequest[];
@@ -363,19 +370,77 @@ export const ProcurementView: React.FC<ProcurementViewProps> = ({
           </div>
         </div>
 
-        {/* Global Action: New Request */}
-        <SkeuoButton
-          size="sm"
-          variant="primary"
-          onClick={() => {
-            setEditingRequest(null);
-            setIsCreateModalOpen(true);
-          }}
-          icon={<Plus className="w-3.5 h-3.5" />}
-          aria-label="Create new procurement request"
-        >
-          New Procurement Request
-        </SkeuoButton>
+        {/* Global Action: Export & New Request */}
+        <div className="flex items-center gap-2">
+          <ExportMenu
+            buttonSize="sm"
+            variant="standard"
+            label="Export"
+            options={[
+              {
+                id: 'filtered_requests',
+                label: `Filtered View (${filteredRequests.length})`,
+                count: filteredRequests.length,
+                disabled: !canRoleExport(currentUserRole, 'procurement_all').allowed && !canRoleExport(currentUserRole, 'procurement_own').allowed,
+                disabledReason: !canRoleExport(currentUserRole, 'procurement_all').allowed && !canRoleExport(currentUserRole, 'procurement_own').allowed
+                  ? canRoleExport(currentUserRole, 'procurement_all').reason
+                  : undefined,
+                onExport: () => exportProcurementRequests(
+                  filteredRequests,
+                  `Filtered Procurement View (${activeTab}, Status: ${statusFilter})`,
+                  currentUserRole
+                )
+              },
+              {
+                id: 'all_requests',
+                label: currentUserRole.exportScope === 'own' 
+                  ? `My Requests (${myRequestsCount})` 
+                  : `All Procurement Records (${requests.length})`,
+                count: currentUserRole.exportScope === 'own' ? myRequestsCount : requests.length,
+                disabled: !canRoleExport(currentUserRole, 'procurement_all').allowed && !canRoleExport(currentUserRole, 'procurement_own').allowed,
+                disabledReason: !canRoleExport(currentUserRole, 'procurement_all').allowed && !canRoleExport(currentUserRole, 'procurement_own').allowed
+                  ? canRoleExport(currentUserRole, 'procurement_all').reason
+                  : undefined,
+                onExport: () => exportProcurementRequests(
+                  currentUserRole.exportScope === 'own' 
+                    ? requests.filter(r => r.requester.email.toLowerCase() === currentUserRole.email.toLowerCase() || r.requester.name.toLowerCase() === currentUserRole.name.toLowerCase())
+                    : requests,
+                  currentUserRole.exportScope === 'own' ? 'My Procurement Requests' : 'All Enterprise Procurement Records',
+                  currentUserRole
+                )
+              },
+              {
+                id: 'spend_summary',
+                label: 'Spend & Commitments by Currency',
+                count: requests.length,
+                disabled: !canRoleExport(currentUserRole, 'procurement_spend').allowed,
+                disabledReason: canRoleExport(currentUserRole, 'procurement_spend').reason,
+                onExport: () => exportProcurementSpendSummary(requests, currentUserRole)
+              },
+              {
+                id: 'purchasing_queue',
+                label: `Purchasing Queue & Orders (${purchasingQueueCount})`,
+                count: purchasingQueueCount,
+                disabled: !canRoleExport(currentUserRole, 'purchasing_queue').allowed,
+                disabledReason: canRoleExport(currentUserRole, 'purchasing_queue').reason,
+                onExport: () => exportPurchasingQueue(requests, currentUserRole)
+              }
+            ]}
+          />
+
+          <SkeuoButton
+            size="sm"
+            variant="primary"
+            onClick={() => {
+              setEditingRequest(null);
+              setIsCreateModalOpen(true);
+            }}
+            icon={<Plus className="w-3.5 h-3.5" />}
+            aria-label="Create new procurement request"
+          >
+            New Procurement Request
+          </SkeuoButton>
+        </div>
       </div>
 
       {/* Navigation Tabs (4 Core Views) */}

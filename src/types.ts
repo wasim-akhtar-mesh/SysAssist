@@ -205,6 +205,7 @@ export interface SimulatedUserRole {
   department: string;
   badge: string;
   description?: string;
+  exportScope?: string;
 }
 
 export type ProcurementUrgency = 'Standard' | 'Urgent' | 'Critical';

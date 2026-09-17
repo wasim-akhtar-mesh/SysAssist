@@ -24,16 +24,20 @@ import {
   Headphones,
   Radio
 } from 'lucide-react';
-import { Asset, AssetCategory, AssetStatus } from '../types';
+import { Asset, AssetCategory, AssetStatus, SimulatedUserRole } from '../types';
 import { SkeuoButton, LedIndicator, StatusBadge } from './SkeuoComponents';
 import { PERIPHERAL_CATEGORIES } from '../utils/inventorySelectors';
 import { getCategorySpecs, getCategorySpecsSummary } from '../utils/categorySpecs';
+import { ExportMenu, ExportOption } from './ExportMenu';
+import { exportInventory, exportInventoryValuation, canRoleExport } from '../services/exportService';
+import { SIMULATED_ROLES } from '../services/procurementService';
 
 interface AssetListViewProps {
   assets: Asset[];
   section?: 'laptops' | 'peripherals' | 'all';
   initialCategoryFilter?: AssetCategory | 'ALL';
   initialStatusFilter?: AssetStatus | 'ALL';
+  currentUserRole?: SimulatedUserRole;
   onSelectAsset: (asset: Asset) => void;
   onOpenScanner: () => void;
   onNewAssetClick: () => void;
@@ -44,6 +48,7 @@ export const AssetListView: React.FC<AssetListViewProps> = ({
   section = 'all',
   initialCategoryFilter = 'ALL',
   initialStatusFilter = 'ALL',
+  currentUserRole,
   onSelectAsset,
   onOpenScanner,
   onNewAssetClick
@@ -256,6 +261,54 @@ export const AssetListView: React.FC<AssetListViewProps> = ({
               <List className="w-3.5 h-3.5" />
             </button>
           </div>
+
+          {/* Export Menu */}
+          <ExportMenu
+            buttonSize="sm"
+            variant="standard"
+            label="Export"
+            options={[
+              {
+                id: 'filtered_assets',
+                label: `Filtered Results (${filteredAssets.length})`,
+                count: filteredAssets.length,
+                disabled: currentUserRole ? !canRoleExport(currentUserRole, 'inventory').allowed : false,
+                disabledReason: currentUserRole ? canRoleExport(currentUserRole, 'inventory').reason : undefined,
+                onExport: () => exportInventory(
+                  filteredAssets,
+                  `Filtered: ${selectedCategory}, ${selectedStatus}${searchQuery ? `, "${searchQuery}"` : ''}`,
+                  currentUserRole || SIMULATED_ROLES.it_head,
+                  section === 'laptops' ? 'Laptops' : section === 'peripherals' ? 'Peripherals' : 'All'
+                )
+              },
+              {
+                id: 'all_section_assets',
+                label: `All ${section === 'laptops' ? 'Laptops' : section === 'peripherals' ? 'Peripherals' : 'Assets'} (${sectionAssets.length})`,
+                count: sectionAssets.length,
+                disabled: currentUserRole ? !canRoleExport(currentUserRole, 'inventory').allowed : false,
+                disabledReason: currentUserRole ? canRoleExport(currentUserRole, 'inventory').reason : undefined,
+                onExport: () => exportInventory(
+                  sectionAssets,
+                  `Complete ${section === 'laptops' ? 'Laptop' : section === 'peripherals' ? 'Peripheral' : 'Fleet'} Inventory`,
+                  currentUserRole || SIMULATED_ROLES.it_head,
+                  section === 'laptops' ? 'Laptops' : section === 'peripherals' ? 'Peripherals' : 'All'
+                )
+              },
+              ...(section === 'laptops' || section === 'all' ? [
+                {
+                  id: 'valuation_report',
+                  label: `${section === 'laptops' ? 'Laptop' : 'Fleet'} Valuation Report`,
+                  count: sectionAssets.length,
+                  disabled: currentUserRole ? !canRoleExport(currentUserRole, 'inventory_valuation').allowed : false,
+                  disabledReason: currentUserRole ? canRoleExport(currentUserRole, 'inventory_valuation').reason : undefined,
+                  onExport: () => exportInventoryValuation(
+                    sectionAssets,
+                    currentUserRole || SIMULATED_ROLES.it_head
+                  )
+                }
+              ] : [])
+            ]}
+          />
 
           {/* Quick Intake Button */}
           <SkeuoButton

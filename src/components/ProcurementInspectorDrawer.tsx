@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { 
   X, 
   FileCheck2, 
@@ -17,7 +17,8 @@ import {
   Edit3, 
   Boxes,
   Ban,
-  ArrowRight
+  ArrowRight,
+  Printer
 } from 'lucide-react';
 import { 
   ProcurementRequest, 
@@ -26,7 +27,8 @@ import {
   Asset
 } from '../types';
 import { SkeuoButton, StatusBadge } from './SkeuoComponents';
-import { canActorApprove } from '../services/procurementService';
+import { canActorApprove, isActorRequestOwner } from '../services/procurementService';
+import { PrintRequestDossierModal } from './PrintRequestDossierModal';
 
 interface ProcurementInspectorDrawerProps {
   isOpen: boolean;
@@ -67,11 +69,12 @@ export const ProcurementInspectorDrawer: React.FC<ProcurementInspectorDrawerProp
   onEditRequest,
   onResubmitRequest
 }) => {
+  const [showDossierModal, setShowDossierModal] = useState(false);
+
   if (!isOpen || !request) return null;
 
   const approvalCheck = canActorApprove(request, currentUser);
-  const isRequester = request.requester.email.toLowerCase() === currentUser.email.toLowerCase() ||
-                      request.requester.name.toLowerCase() === currentUser.name.toLowerCase();
+  const isRequester = isActorRequestOwner(request, currentUser);
 
   const getStatusBadgeColor = (status: ProcurementStatus) => {
     switch (status) {
@@ -122,14 +125,27 @@ export const ProcurementInspectorDrawer: React.FC<ProcurementInspectorDrawerProp
           </p>
         </div>
 
-        <button
-          type="button"
-          onClick={onClose}
-          className="p-1.5 rounded-md text-[#686B6D] hover:text-[#181A1B] hover:bg-[#DFDDD6] cursor-pointer"
-          aria-label="Close procurement inspector"
-        >
-          <X className="w-5 h-5" />
-        </button>
+          <div className="flex items-center gap-1.5">
+            <button
+              type="button"
+              onClick={() => setShowDossierModal(true)}
+              className="px-2 py-1 rounded-md text-[#505457] hover:text-[#181A1B] hover:bg-[#DFDDD6] cursor-pointer flex items-center gap-1 text-xs border border-[#C5C3BC] bg-[#FAF9F5]"
+              title="Print Request Dossier & Audit Record"
+              aria-label="Print Request Dossier"
+            >
+              <Printer className="w-3.5 h-3.5 text-[#2C6E9B]" />
+              <span className="hidden sm:inline font-medium">Print Dossier</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={onClose}
+              className="p-1.5 rounded-md text-[#686B6D] hover:text-[#181A1B] hover:bg-[#DFDDD6] cursor-pointer"
+              aria-label="Close procurement inspector"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
       </div>
 
       {/* Drawer Body - Scrollable */}
@@ -274,8 +290,8 @@ export const ProcurementInspectorDrawer: React.FC<ProcurementInspectorDrawerProp
                 </SkeuoButton>
               )}
 
-              {/* Received & Asset Registration Actions */}
-              {(request.status === 'Received' || request.status === 'Asset Registration') && (
+              {/* Received & Asset Registration Actions (IT Asset Manager Only) */}
+              {(request.status === 'Received' || request.status === 'Asset Registration') && currentUser.id === 'asset_manager' && (
                 <SkeuoButton
                   size="sm"
                   variant="primary"
@@ -284,6 +300,12 @@ export const ProcurementInspectorDrawer: React.FC<ProcurementInspectorDrawerProp
                 >
                   Register & Assign Fleet Assets
                 </SkeuoButton>
+              )}
+              {(request.status === 'Received' || request.status === 'Asset Registration') && currentUser.id !== 'asset_manager' && (
+                <div className="text-[11px] text-[#707375] italic flex items-center gap-1.5 py-1">
+                  <ShieldCheck className="w-3.5 h-3.5 text-[#8C8F91]" />
+                  <span>Awaiting asset registration by IT Asset Manager</span>
+                </div>
               )}
 
               {/* Assigned/Fulfilled Actions */}
@@ -576,6 +598,13 @@ export const ProcurementInspectorDrawer: React.FC<ProcurementInspectorDrawerProp
           </div>
         </div>
       </div>
+
+      {/* Printable Request Dossier Modal */}
+      <PrintRequestDossierModal
+        isOpen={showDossierModal}
+        onClose={() => setShowDossierModal(false)}
+        request={request}
+      />
     </div>
   );
 };

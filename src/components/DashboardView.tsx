@@ -29,6 +29,9 @@ import {
 import { Asset, AssetCategory, AssetStatus, ChangeLogEntry, InventoryThreshold, JiraTicket, ProcurementRequest, SimulatedUserRole } from '../types';
 import { getDashboardMetrics, PERIPHERAL_CATEGORIES } from '../utils/inventorySelectors';
 import { SkeuoButton, LedIndicator } from './SkeuoComponents';
+import { ExportMenu, ExportOption } from './ExportMenu';
+import { exportDashboardOperationalSummary, canRoleExport } from '../services/exportService';
+import { SIMULATED_ROLES } from '../services/procurementService';
 
 interface DashboardViewProps {
   assets: Asset[];
@@ -138,6 +141,27 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
         {/* Global Action Triggers */}
         <div className="flex items-center gap-2">
+          <ExportMenu
+            buttonSize="sm"
+            variant="standard"
+            label="Export"
+            options={[
+              {
+                id: 'dashboard_summary',
+                label: 'Executive Operational Summary',
+                count: assets.length + procurementRequests.length + jiraTickets.length,
+                disabled: currentUserRole ? !canRoleExport(currentUserRole, 'operational_summary').allowed : false,
+                disabledReason: currentUserRole ? canRoleExport(currentUserRole, 'operational_summary').reason : undefined,
+                onExport: () => exportDashboardOperationalSummary({
+                  assets,
+                  procurementRequests,
+                  jiraTickets,
+                  actor: currentUserRole || SIMULATED_ROLES.it_head
+                })
+              }
+            ]}
+          />
+
           <SkeuoButton
             size="sm"
             variant="standard"

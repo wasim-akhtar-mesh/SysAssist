@@ -140,25 +140,35 @@ export const UtilityBar: React.FC<UtilityBarProps> = ({
 
         {/* Development / Demo Role Switcher */}
         {activeRole && onSelectRole && availableRoles.length > 0 && (
-          <div className="flex items-center gap-1.5 bg-[#E4E2DC] px-2 py-1 rounded border border-[#C5C3BC]">
-            <span className="text-[10px] font-medium uppercase tracking-wider text-[#707375] hidden sm:inline">
-              Demo Role:
-            </span>
-            <select
-              aria-label="Demo role selector"
-              value={activeRole.id}
-              onChange={(e) => {
-                const found = availableRoles.find(r => r.id === e.target.value);
-                if (found) onSelectRole(found);
-              }}
-              className="text-xs font-semibold text-[#181A1B] bg-transparent border-0 cursor-pointer focus:outline-none focus:ring-1 focus:ring-[#C66A2B] rounded pr-1"
-            >
-              {availableRoles.map(r => (
-                <option key={r.id} value={r.id}>
-                  {r.badge}: {r.name.split(' ')[0]}
-                </option>
-              ))}
-            </select>
+          <div className="flex flex-col justify-center bg-[#E4E2DC] px-2.5 py-1 rounded border border-[#C5C3BC]">
+            <div className="flex items-center gap-1.5">
+              <span className="text-[10px] font-medium uppercase tracking-wider text-[#707375] hidden sm:inline">
+                Demo Role:
+              </span>
+              <select
+                aria-label="Demo role selector"
+                value={activeRole.id}
+                onChange={(e) => {
+                  const found = availableRoles.find(r => r.id === e.target.value);
+                  if (found) onSelectRole(found);
+                }}
+                className="text-xs font-semibold text-[#181A1B] bg-transparent border-0 cursor-pointer focus:outline-none focus:ring-1 focus:ring-[#C66A2B] rounded pr-1"
+              >
+                {availableRoles.map(r => (
+                  <option key={r.id} value={r.id}>
+                    {r.badge}: {r.name.split(' ')[0]}
+                  </option>
+                ))}
+              </select>
+            </div>
+            {activeRole.exportScope && (
+              <span 
+                className="text-[9px] text-[#2C6E9B] font-mono truncate max-w-[200px] hidden md:block"
+                title={`Active Export Scope: ${activeRole.exportScope}`}
+              >
+                Scope: {activeRole.exportScope}
+              </span>
+            )}
           </div>
         )}
 
