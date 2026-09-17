@@ -1,7 +1,7 @@
 import { Asset, ChangeLogEntry, JiraTicket } from '../types';
 
 /**
- * Centralized, collision-safe identifier generation engine for SysAssist.
+ * Centralized, collision-safe identifier generation engine for System Assist.
  * Checks existing collections before returning unique tags, keys, barcodes, and IDs.
  */
 

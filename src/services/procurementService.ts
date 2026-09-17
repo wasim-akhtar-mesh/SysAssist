@@ -156,42 +156,46 @@ export function canActorApprove(request: ProcurementRequest, actor: SimulatedUse
   return { allowed: false, reason: `Current status '${request.status}' is not awaiting approval.` };
 }
 
+export type ProcurementAction = 
+  | 'SUBMIT'
+  | 'IT_APPROVE'
+  | 'IT_REJECT'
+  | 'IT_REQUEST_CHANGES'
+  | 'IT_FULFILL_EXISTING_STOCK'
+  | 'FINANCE_APPROVE'
+  | 'FINANCE_REJECT'
+  | 'FINANCE_REQUEST_CHANGES'
+  | 'CREATE_PO'
+  | 'MARK_SHIPPED'
+  | 'RECORD_RECEIPT'
+  | 'REGISTER_AND_ASSIGN_ASSETS'
+  | 'CLOSE'
+  | 'CANCEL'
+  | 'RESUBMIT';
+
+export interface TransitionPayload {
+  reason?: string;
+  notes?: string;
+  stockAssetId?: string;
+  stockAssetIds?: string[];
+  stockAssetTag?: string;
+  overrideMismatch?: boolean;
+  purchaseOrder?: PurchaseOrderInfo;
+  receipt?: DeliveryReceipt;
+  registeredAssetTags?: string[];
+  newAssets?: Asset[];
+  availableAssets?: Asset[];
+}
+
 /**
  * Core guarded workflow transition engine.
  * Enforces all state-machine constraints and generates immutable audit records.
  */
 export function transitionRequest(
   request: ProcurementRequest,
-  action: 
-    | 'SUBMIT'
-    | 'IT_APPROVE'
-    | 'IT_REJECT'
-    | 'IT_REQUEST_CHANGES'
-    | 'IT_FULFILL_EXISTING_STOCK'
-    | 'FINANCE_APPROVE'
-    | 'FINANCE_REJECT'
-    | 'FINANCE_REQUEST_CHANGES'
-    | 'CREATE_PO'
-    | 'MARK_SHIPPED'
-    | 'RECORD_RECEIPT'
-    | 'REGISTER_AND_ASSIGN_ASSETS'
-    | 'CLOSE'
-    | 'CANCEL'
-    | 'RESUBMIT',
+  action: ProcurementAction,
   actor: SimulatedUserRole,
-  payload?: {
-    reason?: string;
-    notes?: string;
-    stockAssetId?: string;
-    stockAssetIds?: string[];
-    stockAssetTag?: string;
-    overrideMismatch?: boolean;
-    purchaseOrder?: PurchaseOrderInfo;
-    receipt?: DeliveryReceipt;
-    registeredAssetTags?: string[];
-    newAssets?: Asset[];
-    availableAssets?: Asset[];
-  }
+  payload?: TransitionPayload
 ): TransitionResult {
   const timestamp = new Date().toISOString();
   const previousState = request.status;
@@ -210,6 +214,15 @@ export function transitionRequest(
       return {
         success: false,
         error: `Cannot submit request from status '${request.status}'. Only Draft or Changes Requested can be submitted.`
+      };
+    }
+    const isRequester = actor.email.toLowerCase() === request.requester.email.toLowerCase() ||
+                        actor.name.toLowerCase() === request.requester.name.toLowerCase() ||
+                        actor.id === 'requester';
+    if (!isRequester && actor.id !== 'it_head') {
+      return {
+        success: false,
+        error: 'Only the requester can submit or resubmit this procurement request.'
       };
     }
     const validation = validateSubmission(request);
@@ -883,7 +896,7 @@ export function transitionRequest(
 
   // 11. Action: REGISTER_AND_ASSIGN_ASSETS
   if (action === 'REGISTER_AND_ASSIGN_ASSETS') {
-    if (actor.id !== 'asset_manager') {
+    if (actor.id !== 'asset_manager' && actor.id !== 'it_head') {
       return {
         success: false,
         error: 'Only IT Asset Managers can register and assign assets.'
@@ -1009,10 +1022,13 @@ export function transitionRequest(
 
   // 12. Action: CLOSE
   if (action === 'CLOSE') {
-    if (actor.id !== 'asset_manager') {
+    const isRequester = actor.email.toLowerCase() === request.requester.email.toLowerCase() ||
+                        actor.name.toLowerCase() === request.requester.name.toLowerCase() ||
+                        actor.id === 'requester';
+    if (!isRequester && actor.id !== 'it_head' && actor.id !== 'asset_manager') {
       return {
         success: false,
-        error: 'Only IT Asset Managers can close procurement requests.'
+        error: 'Only the Requester, IT Head, or IT Asset Manager can close procurement requests.'
       };
     }
     if (request.status !== 'Assigned/Fulfilled') {

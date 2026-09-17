@@ -63,7 +63,7 @@ export const BarcodeLabelPlate: React.FC<BarcodeLabelPlateProps> = ({ asset, sho
 
     const header = doc.createElement('div');
     header.className = 'tag-header';
-    header.textContent = 'SYSASSIST HARDWARE OPERATIONS • CALIBRATED TAG';
+    header.textContent = 'SYSTEM ASSIST HARDWARE OPERATIONS • CALIBRATED TAG';
     tagBox.appendChild(header);
 
     const tagId = doc.createElement('div');
@@ -126,7 +126,7 @@ export const BarcodeLabelPlate: React.FC<BarcodeLabelPlateProps> = ({ asset, sho
         {/* Plate Content */}
         <div className="px-2 py-1 text-center flex flex-col items-center">
           <div className="text-[9px] font-sans tracking-widest uppercase font-bold text-[#505457] border-b border-[#C5C3BC] pb-1 w-full text-center">
-            SYSASSIST HARDWARE OPERATIONS • CALIBRATED TAG
+            SYSTEM ASSIST HARDWARE OPERATIONS • CALIBRATED TAG
           </div>
 
           <div className="mt-2 flex items-baseline justify-between w-full px-1">

@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { 
   FileCheck2, 
   Clock, 
@@ -16,7 +16,8 @@ import {
   User, 
   DollarSign,
   ChevronRight,
-  Boxes
+  Boxes,
+  X
 } from 'lucide-react';
 import { 
   ProcurementRequest, 
@@ -29,7 +30,13 @@ import {
   DeliveryReceipt
 } from '../types';
 import { SkeuoButton, LedIndicator } from './SkeuoComponents';
-import { filterProcurementRequests } from '../services/procurementService';
+import { 
+  filterProcurementRequests, 
+  transitionRequest, 
+  ProcurementAction, 
+  TransitionPayload, 
+  TransitionResult 
+} from '../services/procurementService';
 import { ProcurementRequestModal } from './ProcurementRequestModal';
 import { ProcurementInspectorDrawer } from './ProcurementInspectorDrawer';
 import { ProcurementReasonModal } from './ProcurementReasonModal';
@@ -44,10 +51,12 @@ interface ProcurementViewProps {
   currentUserRole: SimulatedUserRole;
   initialView?: ProcurementViewType;
   initialStatusFilter?: string;
+  initialSelectedRequestId?: string | null;
   onSaveDraft: (request: ProcurementRequest) => void;
   onSubmitRequest: (request: ProcurementRequest) => void;
   onUpdateRequest: (request: ProcurementRequest, updatedAsset?: Asset) => void;
   onRegisterFleetAssets: (request: ProcurementRequest, createdAssets: Asset[]) => void;
+  onApplyWorkflowResult?: (result: TransitionResult) => void;
 }
 
 export const ProcurementView: React.FC<ProcurementViewProps> = ({
@@ -56,10 +65,12 @@ export const ProcurementView: React.FC<ProcurementViewProps> = ({
   currentUserRole,
   initialView = 'all_requests',
   initialStatusFilter = 'ALL',
+  initialSelectedRequestId = null,
   onSaveDraft,
   onSubmitRequest,
   onUpdateRequest,
-  onRegisterFleetAssets
+  onRegisterFleetAssets,
+  onApplyWorkflowResult
 }) => {
   const [activeTab, setActiveTab] = useState<ProcurementViewType>(initialView);
   const [searchQuery, setSearchQuery] = useState('');
@@ -67,9 +78,31 @@ export const ProcurementView: React.FC<ProcurementViewProps> = ({
   const [categoryFilter, setCategoryFilter] = useState<string>('ALL');
 
   // Inspector & Modals State
-  const [selectedRequestId, setSelectedRequestId] = useState<string | null>(null);
+  const [selectedRequestId, setSelectedRequestId] = useState<string | null>(initialSelectedRequestId);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [editingRequest, setEditingRequest] = useState<ProcurementRequest | null>(null);
+
+  // Workflow Error & Notice State
+  const [workflowError, setWorkflowError] = useState<string | null>(null);
+  const [workflowNotice, setWorkflowNotice] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (initialSelectedRequestId !== undefined) {
+      setSelectedRequestId(initialSelectedRequestId);
+    }
+  }, [initialSelectedRequestId]);
+
+  useEffect(() => {
+    if (initialView) {
+      setActiveTab(initialView);
+    }
+  }, [initialView]);
+
+  useEffect(() => {
+    if (initialStatusFilter) {
+      setStatusFilter(initialStatusFilter);
+    }
+  }, [initialStatusFilter]);
 
   // Reason Modal
   const [reasonModalConfig, setReasonModalConfig] = useState<{
@@ -156,368 +189,159 @@ export const ProcurementView: React.FC<ProcurementViewProps> = ({
     }
   };
 
-  // Helper action triggers
+  // Central Workflow Transition Engine Dispatcher
+  const applyWorkflowTransition = (
+    req: ProcurementRequest,
+    action: ProcurementAction,
+    payload?: TransitionPayload
+  ): boolean => {
+    const result = transitionRequest(req, action, currentUserRole, payload);
+
+    if (!result.success && !result.updatedRequest) {
+      setWorkflowError(result.error || `Workflow transition rejected: ${action} not permitted.`);
+      return false;
+    }
+
+    setWorkflowError(null);
+    if (result.error && result.updatedRequest) {
+      setWorkflowNotice(result.error);
+    } else {
+      setWorkflowNotice(null);
+    }
+
+    if (onApplyWorkflowResult) {
+      onApplyWorkflowResult(result);
+    } else {
+      if (result.createdAssets && result.createdAssets.length > 0) {
+        onRegisterFleetAssets(result.updatedRequest!, result.createdAssets);
+      } else {
+        const singleAsset = result.affectedAsset || (result.affectedAssets && result.affectedAssets[0]);
+        onUpdateRequest(result.updatedRequest!, singleAsset);
+      }
+    }
+
+    return true;
+  };
+
   const handleApproveIT = (req: ProcurementRequest) => {
-    const now = new Date().toISOString();
-    const updated: ProcurementRequest = {
-      ...req,
-      status: 'Finance Review',
-      updatedAt: now,
-      approvals: [
-        ...req.approvals,
-        {
-          id: `appr-${Date.now()}`,
-          level: 'IT Head',
-          approverName: currentUserRole.name,
-          approverEmail: currentUserRole.email,
-          timestamp: now,
-          decision: 'Approved'
-        }
-      ],
-      auditLogs: [
-        ...req.auditLogs,
-        {
-          id: `audit-${Date.now()}`,
-          timestamp: now,
-          actor: currentUserRole.name,
-          role: currentUserRole.badge,
-          requestNumber: req.requestNumber,
-          action: 'IT Head Approved',
-          previousState: 'IT Head Review',
-          newState: 'Finance Review',
-          notes: 'IT specification and technical compatibility verified.'
-        }
-      ]
-    };
-    onUpdateRequest(updated);
+    applyWorkflowTransition(req, 'IT_APPROVE', {
+      notes: 'IT specification and technical compatibility verified.'
+    });
   };
 
   const handleApproveFinance = (req: ProcurementRequest) => {
-    const now = new Date().toISOString();
-    const updated: ProcurementRequest = {
-      ...req,
-      status: 'Purchasing Queue',
-      financeApprovedAmount: req.estimatedTotalCost,
-      updatedAt: now,
-      approvals: [
-        ...req.approvals,
-        {
-          id: `appr-${Date.now()}`,
-          level: 'Finance',
-          approverName: currentUserRole.name,
-          approverEmail: currentUserRole.email,
-          timestamp: now,
-          decision: 'Approved'
-        }
-      ],
-      auditLogs: [
-        ...req.auditLogs,
-        {
-          id: `audit-${Date.now()}`,
-          timestamp: now,
-          actor: currentUserRole.name,
-          role: currentUserRole.badge,
-          requestNumber: req.requestNumber,
-          action: 'Finance Approved',
-          previousState: 'Finance Review',
-          newState: 'Purchasing Queue',
-          notes: `Budget authorized: ${req.currency} ${req.estimatedTotalCost.toFixed(2)}.`
-        }
-      ]
-    };
-    onUpdateRequest(updated);
+    applyWorkflowTransition(req, 'FINANCE_APPROVE', {
+      notes: `Budget authorized: ${req.currency} ${req.estimatedTotalCost.toFixed(2)}.`
+    });
   };
 
   const handleReasonSubmit = (reason: string) => {
     const req = reasonModalConfig.targetRequest;
     if (!req) return;
-    const now = new Date().toISOString();
     const isReject = reasonModalConfig.type === 'reject';
-    const nextStatus: ProcurementStatus = isReject ? 'Rejected' : 'Changes Requested';
+    const isITStage = req.status === 'IT Head Review';
+    const action: ProcurementAction = isReject 
+      ? (isITStage ? 'IT_REJECT' : 'FINANCE_REJECT')
+      : (isITStage ? 'IT_REQUEST_CHANGES' : 'FINANCE_REQUEST_CHANGES');
 
-    const updated: ProcurementRequest = {
-      ...req,
-      status: nextStatus,
-      updatedAt: now,
-      auditLogs: [
-        ...req.auditLogs,
-        {
-          id: `audit-${Date.now()}`,
-          timestamp: now,
-          actor: currentUserRole.name,
-          role: currentUserRole.badge,
-          requestNumber: req.requestNumber,
-          action: isReject ? 'Request Rejected' : 'Changes Requested',
-          previousState: req.status,
-          newState: nextStatus,
-          notes: reason
-        }
-      ]
-    };
-    onUpdateRequest(updated);
+    applyWorkflowTransition(req, action, { reason });
   };
 
-  const handleStockFulfillmentConfirm = (assetId: string, overrideMismatch: boolean, overrideReason?: string) => {
+  const handleStockFulfillmentConfirm = (assetIds: string[], overrideMismatch: boolean, overrideReason?: string) => {
     if (!stockModalRequest) return;
-    const asset = assets.find(a => a.id === assetId);
-    if (!asset) return;
-
-    const now = new Date().toISOString();
-    const updatedAsset: Asset = {
-      ...asset,
-      status: 'In Use',
-      assignedTo: stockModalRequest.requester.name,
-      assignedEmail: stockModalRequest.requester.email,
-      assignedDepartment: stockModalRequest.department,
-      procurementRequestId: stockModalRequest.id
-    };
-
-    const notesMsg = overrideMismatch
-      ? `Fulfilled from depot stock (${asset.assetTag} - ${asset.model}). Category override justified: ${overrideReason}`
-      : `Fulfilled immediately from depot stock (${asset.assetTag} - ${asset.model}). Bypassed purchasing.`;
-
-    const updatedRequest: ProcurementRequest = {
-      ...stockModalRequest,
-      status: 'Assigned/Fulfilled',
-      updatedAt: now,
-      fulfilledAssetTags: [...stockModalRequest.fulfilledAssetTags, asset.assetTag],
-      auditLogs: [
-        ...stockModalRequest.auditLogs,
-        {
-          id: `audit-${Date.now()}`,
-          timestamp: now,
-          actor: currentUserRole.name,
-          role: currentUserRole.badge,
-          requestNumber: stockModalRequest.requestNumber,
-          action: 'Fulfilled From Stock',
-          previousState: stockModalRequest.status,
-          newState: 'Assigned/Fulfilled',
-          notes: notesMsg
-        }
-      ]
-    };
-
-    onUpdateRequest(updatedRequest, updatedAsset);
+    applyWorkflowTransition(stockModalRequest, 'IT_FULFILL_EXISTING_STOCK', {
+      stockAssetIds: assetIds,
+      overrideMismatch,
+      reason: overrideReason,
+      availableAssets: assets
+    });
+    setStockModalRequest(null);
   };
 
   const handlePOSubmit = (po: PurchaseOrderInfo) => {
     if (!poModalRequest) return;
-    const now = new Date().toISOString();
-
-    // Check if cost exceeded Finance approved budget
-    const approvedBudget = poModalRequest.financeApprovedAmount ?? poModalRequest.estimatedTotalCost;
-    const isExceeded = po.finalTotalCost > approvedBudget;
-
-    if (isExceeded) {
-      // Cost increase guard: return to Finance Review
-      const exceedDiff = (po.finalTotalCost - approvedBudget).toFixed(2);
-      const updated: ProcurementRequest = {
-        ...poModalRequest,
-        status: 'Finance Review',
-        purchaseOrder: po,
-        updatedAt: now,
-        auditLogs: [
-          ...poModalRequest.auditLogs,
-          {
-            id: `audit-${Date.now()}`,
-            timestamp: now,
-            actor: currentUserRole.name,
-            role: currentUserRole.badge,
-            requestNumber: poModalRequest.requestNumber,
-            action: 'Budget Exceeded - Returned to Finance',
-            previousState: 'Purchasing Queue',
-            newState: 'Finance Review',
-            notes: `PO ${po.poNumber} total (${po.currency} ${po.finalTotalCost.toFixed(2)}) exceeded authorized budget of ${poModalRequest.currency} ${approvedBudget.toFixed(2)} by +${exceedDiff}. Returned for Finance re-approval.`
-          }
-        ]
-      };
-      onUpdateRequest(updated);
-    } else {
-      // Normal transition to Ordered
-      const updated: ProcurementRequest = {
-        ...poModalRequest,
-        status: 'Ordered',
-        purchaseOrder: po,
-        updatedAt: now,
-        auditLogs: [
-          ...poModalRequest.auditLogs,
-          {
-            id: `audit-${Date.now()}`,
-            timestamp: now,
-            actor: currentUserRole.name,
-            role: currentUserRole.badge,
-            requestNumber: poModalRequest.requestNumber,
-            action: 'Purchase Order Issued',
-            previousState: 'Purchasing Queue',
-            newState: 'Ordered',
-            notes: `PO ${po.poNumber} issued to ${po.vendor} for ${po.quantity} unit(s). ETA: ${po.expectedDeliveryDate}.`
-          }
-        ]
-      };
-      onUpdateRequest(updated);
-    }
+    applyWorkflowTransition(poModalRequest, 'CREATE_PO', {
+      purchaseOrder: po
+    });
+    setPoModalRequest(null);
   };
 
   const handleMarkShipped = (req: ProcurementRequest) => {
-    const now = new Date().toISOString();
-    const updated: ProcurementRequest = {
-      ...req,
-      status: 'Shipped',
-      updatedAt: now,
-      auditLogs: [
-        ...req.auditLogs,
-        {
-          id: `audit-${Date.now()}`,
-          timestamp: now,
-          actor: currentUserRole.name,
-          role: currentUserRole.badge,
-          requestNumber: req.requestNumber,
-          action: 'Carrier Dispatched',
-          previousState: 'Ordered',
-          newState: 'Shipped',
-          notes: `Vendor confirmed carrier shipment. Tracking: ${req.purchaseOrder?.trackingReference || 'En route'}.`
-        }
-      ]
-    };
-    onUpdateRequest(updated);
+    applyWorkflowTransition(req, 'MARK_SHIPPED');
   };
 
   const handleDeliveryReceiptConfirm = (receipt: DeliveryReceipt) => {
     if (!deliveryModalRequest) return;
-    const now = new Date().toISOString();
-    const updatedReceipts = [...deliveryModalRequest.receipts, receipt];
-    const newTotal = (deliveryModalRequest.totalReceivedQuantity || 0) + receipt.quantityReceived;
-    const orderedQuantity = deliveryModalRequest.purchaseOrder?.quantity ?? deliveryModalRequest.quantity;
-    const isComplete = newTotal >= orderedQuantity;
-    const nextStatus: ProcurementStatus = isComplete ? 'Asset Registration' : 'Partially Received';
-
-    const updated: ProcurementRequest = {
-      ...deliveryModalRequest,
-      status: nextStatus,
-      receipts: updatedReceipts,
-      totalReceivedQuantity: newTotal,
-      updatedAt: now,
-      auditLogs: [
-        ...deliveryModalRequest.auditLogs,
-        {
-          id: `audit-${Date.now()}`,
-          timestamp: now,
-          actor: currentUserRole.name,
-          role: currentUserRole.badge,
-          requestNumber: deliveryModalRequest.requestNumber,
-          action: isComplete ? 'Delivery Complete' : 'Partial Delivery Recorded',
-          previousState: deliveryModalRequest.status,
-          newState: nextStatus,
-          notes: `Received ${receipt.quantityReceived} unit(s) via slip ${receipt.deliveryReference}. Total received: ${newTotal}/${orderedQuantity}.`
-        }
-      ]
-    };
-    onUpdateRequest(updated);
+    applyWorkflowTransition(deliveryModalRequest, 'RECORD_RECEIPT', {
+      receipt
+    });
+    setDeliveryModalRequest(null);
   };
 
   const handleRegisterAssetsConfirm = (createdAssets: Asset[]) => {
     if (!registerModalRequest) return;
-    const now = new Date().toISOString();
-    const tags = createdAssets.map(a => a.assetTag);
-
-    const updated: ProcurementRequest = {
-      ...registerModalRequest,
-      status: 'Assigned/Fulfilled',
-      registeredAssetTags: [...registerModalRequest.registeredAssetTags, ...tags],
-      updatedAt: now,
-      auditLogs: [
-        ...registerModalRequest.auditLogs,
-        {
-          id: `audit-${Date.now()}`,
-          timestamp: now,
-          actor: currentUserRole.name,
-          role: currentUserRole.badge,
-          requestNumber: registerModalRequest.requestNumber,
-          action: 'Assets Enrolled into Fleet',
-          previousState: registerModalRequest.status,
-          newState: 'Assigned/Fulfilled',
-          notes: `Enrolled ${createdAssets.length} asset(s) (${tags.join(', ')}). Assigned to ${registerModalRequest.requester.name}.`
-        }
-      ]
-    };
-
-    onRegisterFleetAssets(updated, createdAssets);
+    applyWorkflowTransition(registerModalRequest, 'REGISTER_AND_ASSIGN_ASSETS', {
+      newAssets: createdAssets,
+      availableAssets: assets
+    });
+    setRegisterModalRequest(null);
   };
 
   const handleCloseRequest = (req: ProcurementRequest) => {
-    const now = new Date().toISOString();
-    const updated: ProcurementRequest = {
-      ...req,
-      status: 'Closed',
-      updatedAt: now,
-      auditLogs: [
-        ...req.auditLogs,
-        {
-          id: `audit-${Date.now()}`,
-          timestamp: now,
-          actor: currentUserRole.name,
-          role: currentUserRole.badge,
-          requestNumber: req.requestNumber,
-          action: 'Procurement Lifecycle Closed',
-          previousState: req.status,
-          newState: 'Closed',
-          notes: 'Hardware operational deployment confirmed; procurement ticket closed.'
-        }
-      ]
-    };
-    onUpdateRequest(updated);
+    applyWorkflowTransition(req, 'CLOSE');
   };
 
   const handleCancelRequest = (req: ProcurementRequest) => {
-    const now = new Date().toISOString();
-    const updated: ProcurementRequest = {
-      ...req,
-      status: 'Cancelled',
-      updatedAt: now,
-      auditLogs: [
-        ...req.auditLogs,
-        {
-          id: `audit-${Date.now()}`,
-          timestamp: now,
-          actor: currentUserRole.name,
-          role: currentUserRole.badge,
-          requestNumber: req.requestNumber,
-          action: 'Request Cancelled',
-          previousState: req.status,
-          newState: 'Cancelled',
-          notes: 'Cancelled by requester.'
-        }
-      ]
-    };
-    onUpdateRequest(updated);
+    applyWorkflowTransition(req, 'CANCEL');
   };
 
   const handleResubmitRequest = (req: ProcurementRequest) => {
-    const now = new Date().toISOString();
-    const updated: ProcurementRequest = {
-      ...req,
-      status: 'IT Head Review',
-      updatedAt: now,
-      auditLogs: [
-        ...req.auditLogs,
-        {
-          id: `audit-${Date.now()}`,
-          timestamp: now,
-          actor: currentUserRole.name,
-          role: currentUserRole.badge,
-          requestNumber: req.requestNumber,
-          action: req.status === 'Draft' ? 'Draft Submitted' : 'Request Resubmitted',
-          previousState: req.status,
-          newState: 'IT Head Review',
-          notes: 'Re-submitted for IT Head authorization.'
-        }
-      ]
-    };
-    onUpdateRequest(updated);
+    applyWorkflowTransition(req, req.status === 'Draft' ? 'SUBMIT' : 'RESUBMIT');
   };
 
   return (
     <div className="space-y-4">
+      {/* Workflow Guard Error & Notice Banners */}
+      {workflowError && (
+        <div 
+          role="alert" 
+          aria-live="assertive"
+          className="p-3 rounded-lg bg-[#FEF2F2] border border-[#F87171] text-[#B91C1C] flex items-center justify-between shadow-xs animate-in fade-in"
+        >
+          <div className="flex items-center gap-2">
+            <AlertTriangle className="w-4 h-4 shrink-0 text-[#DC2626]" />
+            <span className="font-semibold text-xs">{workflowError}</span>
+          </div>
+          <button
+            type="button"
+            onClick={() => setWorkflowError(null)}
+            className="p-1 rounded text-[#DC2626] hover:bg-[#FEE2E2] cursor-pointer"
+            aria-label="Dismiss error"
+          >
+            <X className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      )}
+
+      {workflowNotice && (
+        <div 
+          role="status"
+          className="p-3 rounded-lg bg-[#FFFBEB] border border-[#FDE68A] text-[#B45309] flex items-center justify-between shadow-xs animate-in fade-in"
+        >
+          <div className="flex items-center gap-2">
+            <ClockAlert className="w-4 h-4 shrink-0 text-[#D97706]" />
+            <span className="font-semibold text-xs">{workflowNotice}</span>
+          </div>
+          <button
+            type="button"
+            onClick={() => setWorkflowNotice(null)}
+            className="p-1 rounded text-[#B45309] hover:bg-[#FEF3C7] cursor-pointer"
+            aria-label="Dismiss notice"
+          >
+            <X className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      )}
       {/* Top Section Header */}
       <div className="ti-surface rounded-lg p-3.5 border border-[#D8D6CF] flex flex-wrap items-center justify-between gap-3 shadow-xs">
         <div className="flex items-center gap-3">

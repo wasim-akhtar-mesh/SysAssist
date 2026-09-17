@@ -82,7 +82,7 @@ export const JiraTicketingDrawer: React.FC<JiraTicketingViewProps> = ({
   const [priority, setPriority] = useState<'Lowest' | 'Low' | 'Medium' | 'High' | 'Highest'>('High');
 
   // Sandbox config settings
-  const [jiraDomain, setJiraDomain] = useState('enterprise-sysassist.atlassian.net');
+  const [jiraDomain, setJiraDomain] = useState('enterprise-systemassist.atlassian.net');
   const [jiraProjectKey, setJiraProjectKey] = useState('SYS');
 
   const filteredTickets = tickets.filter(ticket => {
@@ -121,7 +121,7 @@ export const JiraTicketingDrawer: React.FC<JiraTicketingViewProps> = ({
       id: `jira-${Date.now()}`,
       key: newKey,
       summary: summary.trim(),
-      description: description.trim() || `Automated request for ${hardwareType} initiated via SysAssist Workstation.`,
+      description: description.trim() || `Automated request for ${hardwareType} initiated via System Assist Workstation.`,
       status: 'Open',
       priority,
       createdDate: new Date().toISOString().slice(0, 10),
@@ -621,7 +621,7 @@ export const JiraTicketingDrawer: React.FC<JiraTicketingViewProps> = ({
             Jira Service Management Demo Configuration
           </h3>
           <p className="text-[#686B6D]">
-            SysAssist connects to Jira via REST v3 webhook proxies in this sandbox demonstration.
+            System Assist connects to Jira via REST v3 webhook proxies in this sandbox demonstration.
           </p>
           <div className="space-y-2">
             <div>

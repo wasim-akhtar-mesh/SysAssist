@@ -1,102 +1,212 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { 
   History, 
   Search, 
   Clock, 
   UserCheck, 
   Tag, 
-  FileSpreadsheet,
-  ArrowRight,
-  Filter,
-  User,
-  ShieldCheck,
-  RotateCcw
+  FileSpreadsheet, 
+  ArrowRight, 
+  Filter, 
+  User, 
+  ShieldCheck, 
+  RotateCcw,
+  FileCheck2,
+  Package,
+  Layers
 } from 'lucide-react';
-import { ChangeLogEntry } from '../types';
+import { ChangeLogEntry, ProcurementRequest } from '../types';
 import { SkeuoButton, SegmentedDisplay, StatusBadge } from './SkeuoComponents';
+
+export interface UnifiedAuditLog {
+  id: string;
+  timestamp: string;
+  source: 'Procurement' | 'Hardware Fleet';
+  reference: string;
+  referenceType: 'PR' | 'AST';
+  action: string;
+  property: string;
+  oldValue: string;
+  newValue: string;
+  performedBy: string;
+  role?: string;
+  reason?: string;
+  poNumber?: string;
+  deliveryReference?: string;
+  jiraTicketKey?: string;
+}
 
 interface AuditTrailViewProps {
   changeLogs: ChangeLogEntry[];
+  procurementRequests?: ProcurementRequest[];
   onSelectAssetByTag?: (assetTag: string) => void;
+  onSelectProcurementRequest?: (requestNumber: string) => void;
 }
 
 export const AuditTrailView: React.FC<AuditTrailViewProps> = ({
   changeLogs,
-  onSelectAssetByTag
+  procurementRequests = [],
+  onSelectAssetByTag,
+  onSelectProcurementRequest
 }) => {
   const [searchQuery, setSearchQuery] = useState<string>('');
+  const [sourceFilter, setSourceFilter] = useState<string>('ALL');
   const [selectedAction, setSelectedAction] = useState<string>('ALL');
-  const [selectedProperty, setSelectedProperty] = useState<string>('ALL');
 
-  const filteredLogs = changeLogs.filter(log => {
+  // Unify Asset change logs and Procurement lifecycle audit logs
+  const unifiedLogs: UnifiedAuditLog[] = useMemo(() => {
+    const list: UnifiedAuditLog[] = [];
+
+    // 1. Hardware Fleet Asset Logs
+    changeLogs.forEach(l => {
+      list.push({
+        id: l.id,
+        timestamp: l.timestamp,
+        source: 'Hardware Fleet',
+        reference: l.assetTag,
+        referenceType: 'AST',
+        action: l.action,
+        property: l.property,
+        oldValue: l.oldValue,
+        newValue: l.newValue,
+        performedBy: l.performedBy,
+        reason: l.reason,
+        jiraTicketKey: l.jiraTicketKey,
+        poNumber: l.procurementRequestNumber
+      });
+    });
+
+    // 2. Procurement Requests Lifecycle Events
+    procurementRequests.forEach(req => {
+      (req.auditLogs || []).forEach(log => {
+        list.push({
+          id: log.id,
+          timestamp: log.timestamp,
+          source: 'Procurement',
+          reference: log.requestNumber || req.requestNumber,
+          referenceType: 'PR',
+          action: log.action,
+          property: 'Lifecycle Status',
+          oldValue: log.previousState,
+          newValue: log.newState,
+          performedBy: log.actor,
+          role: log.role,
+          reason: log.notes,
+          poNumber: req.purchaseOrder?.poNumber,
+          deliveryReference: req.receipts?.length ? req.receipts[req.receipts.length - 1].deliveryReference : undefined
+        });
+      });
+    });
+
+    return list.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+  }, [changeLogs, procurementRequests]);
+
+  const filteredLogs = useMemo(() => {
     const q = searchQuery.toLowerCase().trim();
-    const matchesSearch = !q || (
-      log.assetTag.toLowerCase().includes(q) ||
-      log.assetName.toLowerCase().includes(q) ||
-      log.performedBy.toLowerCase().includes(q) ||
-      log.property.toLowerCase().includes(q) ||
-      log.oldValue.toLowerCase().includes(q) ||
-      log.newValue.toLowerCase().includes(q) ||
-      (log.reason && log.reason.toLowerCase().includes(q)) ||
-      (log.jiraTicketKey && log.jiraTicketKey.toLowerCase().includes(q))
-    );
+    return unifiedLogs.filter(log => {
+      const matchesSearch = !q || (
+        log.reference.toLowerCase().includes(q) ||
+        log.action.toLowerCase().includes(q) ||
+        log.performedBy.toLowerCase().includes(q) ||
+        (log.role && log.role.toLowerCase().includes(q)) ||
+        log.property.toLowerCase().includes(q) ||
+        log.oldValue.toLowerCase().includes(q) ||
+        log.newValue.toLowerCase().includes(q) ||
+        (log.reason && log.reason.toLowerCase().includes(q)) ||
+        (log.poNumber && log.poNumber.toLowerCase().includes(q)) ||
+        (log.deliveryReference && log.deliveryReference.toLowerCase().includes(q)) ||
+        (log.jiraTicketKey && log.jiraTicketKey.toLowerCase().includes(q))
+      );
 
-    const matchesAction = selectedAction === 'ALL' || log.action === selectedAction;
-    const matchesProperty = selectedProperty === 'ALL' || log.property.toLowerCase().includes(selectedProperty.toLowerCase());
+      const matchesSource = sourceFilter === 'ALL' || log.source === sourceFilter;
+      const matchesAction = selectedAction === 'ALL' || log.action === selectedAction;
 
-    return matchesSearch && matchesAction && matchesProperty;
-  });
+      return matchesSearch && matchesSource && matchesAction;
+    });
+  }, [unifiedLogs, searchQuery, sourceFilter, selectedAction]);
 
   const handleExportCSV = () => {
-    const headers = ['Timestamp', 'Asset Tag', 'Asset Name', 'Performed By', 'Action', 'Property', 'Old Value', 'New Value', 'Reason', 'Jira Key'];
+    const headers = [
+      'Timestamp', 
+      'Source', 
+      'Reference', 
+      'Action', 
+      'Property Modified', 
+      'Previous State', 
+      'New State', 
+      'Operator', 
+      'Role', 
+      'Justification / Notes', 
+      'PO Number', 
+      'Delivery Reference', 
+      'Jira Key'
+    ];
+
     const rows = filteredLogs.map(log => [
       `"${log.timestamp}"`,
-      `"${log.assetTag}"`,
-      `"${log.assetName.replace(/"/g, '""')}"`,
-      `"${log.performedBy}"`,
+      `"${log.source}"`,
+      `"${log.reference}"`,
       `"${log.action}"`,
       `"${log.property}"`,
-      `"${log.oldValue.replace(/"/g, '""')}"`,
-      `"${log.newValue.replace(/"/g, '""')}"`,
+      `"${(log.oldValue || '').replace(/"/g, '""')}"`,
+      `"${(log.newValue || '').replace(/"/g, '""')}"`,
+      `"${(log.performedBy || '').replace(/"/g, '""')}"`,
+      `"${(log.role || '').replace(/"/g, '""')}"`,
       `"${(log.reason || '').replace(/"/g, '""')}"`,
-      `"${log.jiraTicketKey || ''}"`
+      `"${(log.poNumber || '').replace(/"/g, '""')}"`,
+      `"${(log.deliveryReference || '').replace(/"/g, '""')}"`,
+      `"${(log.jiraTicketKey || '').replace(/"/g, '""')}"`
     ]);
 
     const csvContent = 'data:text/csv;charset=utf-8,' + [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement('a');
     link.setAttribute('href', encodedUri);
-    link.setAttribute('download', `SysAssist_Audit_Trail_${new Date().toISOString().slice(0, 10)}.csv`);
+    link.setAttribute('download', `System_Assist_Audit_Trail_${new Date().toISOString().slice(0, 10)}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
   };
 
-  const reassignmentCount = changeLogs.filter(l => l.action === 'REASSIGN').length;
+  const procurementCount = unifiedLogs.filter(l => l.source === 'Procurement').length;
+  const fleetCount = unifiedLogs.filter(l => l.source === 'Hardware Fleet').length;
+  const uniqueReferences = new Set(unifiedLogs.map(l => l.reference)).size;
+
+  const getActionBadgeClass = (action: string) => {
+    const act = action.toLowerCase();
+    if (act.includes('approv') || act.includes('fulfil') || act.includes('enroll') || act.includes('registered')) {
+      return 'bg-[#EBF7EE] text-[#0F682C] border-[#B7E5C3]';
+    }
+    if (act.includes('reject') || act.includes('cancel')) {
+      return 'bg-[#FEF2F2] text-[#B91C1C] border-[#FECACA]';
+    }
+    if (act.includes('change') || act.includes('partial') || act.includes('exceeded') || act.includes('returned')) {
+      return 'bg-[#FFFBEB] text-[#B45309] border-[#FDE68A]';
+    }
+    if (act.includes('po') || act.includes('order') || act.includes('purchas') || act.includes('reassign')) {
+      return 'bg-[#EEF4FB] text-[#1956A6] border-[#BCD4F3]';
+    }
+    if (act.includes('ship') || act.includes('deliver') || act.includes('receipt')) {
+      return 'bg-[#F0FDF4] text-[#15803D] border-[#BBF7D0]';
+    }
+    return 'bg-[#FAF9F5] text-[#505457] border-[#D8D6CF]';
+  };
 
   return (
     <div className="space-y-3.5">
       {/* Top Metric Strip */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5">
         <div className="ti-surface p-3 rounded-lg border border-[#D8D6CF]">
-          <SegmentedDisplay value={changeLogs.length} label="Audit Events Logged" color="neutral" />
+          <SegmentedDisplay value={unifiedLogs.length} label="Total Audit Events Logged" color="neutral" />
         </div>
         <div className="ti-surface p-3 rounded-lg border border-[#D8D6CF]">
-          <SegmentedDisplay value={reassignmentCount} label="Custodian Reassignments" color="emerald" />
+          <SegmentedDisplay value={procurementCount} label="Procurement Lifecycle Events" color="blue" />
         </div>
         <div className="ti-surface p-3 rounded-lg border border-[#D8D6CF]">
-          <SegmentedDisplay 
-            value={new Set(changeLogs.map(l => l.assetTag)).size} 
-            label="Audited Hardware Units" 
-            color="amber" 
-          />
+          <SegmentedDisplay value={fleetCount} label="Hardware Fleet Modifications" color="emerald" />
         </div>
         <div className="ti-surface p-3 rounded-lg border border-[#D8D6CF]">
-          <SegmentedDisplay 
-            value={changeLogs.filter(l => l.jiraTicketKey).length} 
-            label="Jira Linked Events" 
-            color="blue" 
-          />
+          <SegmentedDisplay value={uniqueReferences} label="Audited Units & Requests" color="amber" />
         </div>
       </div>
 
@@ -108,7 +218,7 @@ export const AuditTrailView: React.FC<AuditTrailViewProps> = ({
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search audit trail (e.g. John, Sina, AST-8821, SYS-1082)..."
+              placeholder="Search audit trail (e.g. PR-2026-0001, AST-8821, Sarah, PO-2026, Dell)..."
               className="w-full h-8.5 pl-8.5 pr-3 ti-well rounded text-xs text-[#181A1B] placeholder-[#8A8C8E] border border-[#C5C3BC] focus:outline-2 focus:outline-[#2C6E9B]"
             />
             <Search className="w-3.5 h-3.5 text-[#7A7D80] absolute left-2.5 top-2.5 pointer-events-none" />
@@ -117,15 +227,13 @@ export const AuditTrailView: React.FC<AuditTrailViewProps> = ({
 
         <div className="flex items-center gap-2 shrink-0">
           <select
-            value={selectedAction}
-            onChange={(e) => setSelectedAction(e.target.value)}
+            value={sourceFilter}
+            onChange={(e) => setSourceFilter(e.target.value)}
             className="h-8.5 px-2.5 rounded ti-btn text-xs text-[#181A1B] border border-[#CFCDBF] focus:outline-2 focus:outline-[#2C6E9B] cursor-pointer"
           >
-            <option value="ALL">All Actions</option>
-            <option value="REASSIGN">REASSIGN</option>
-            <option value="CHECK_IN">CHECK_IN</option>
-            <option value="WARRANTY_SYNC">WARRANTY_SYNC</option>
-            <option value="INTAKE">INTAKE</option>
+            <option value="ALL">All Event Sources</option>
+            <option value="Procurement">Procurement Only</option>
+            <option value="Hardware Fleet">Hardware Fleet Only</option>
           </select>
 
           <SkeuoButton
@@ -146,14 +254,14 @@ export const AuditTrailView: React.FC<AuditTrailViewProps> = ({
             <thead>
               <tr className="border-b border-[#D8D6CF] bg-[#EAE8E2] text-[#686B6D] font-medium text-[11px]">
                 <th className="py-2.5 px-3 whitespace-nowrap">Timestamp</th>
-                <th className="py-2.5 px-3">Asset Tag</th>
+                <th className="py-2.5 px-3 whitespace-nowrap">Entity / Ref</th>
                 <th className="py-2.5 px-3">Action</th>
-                <th className="py-2.5 px-3">Property Modified</th>
+                <th className="py-2.5 px-3">Scope / Property</th>
                 <th className="py-2.5 px-3">Previous State</th>
                 <th className="py-2.5 px-3">New State</th>
                 <th className="py-2.5 px-3">Operator</th>
-                <th className="py-2.5 px-3">Justification</th>
-                <th className="py-2.5 px-3 text-right">Jira Ref</th>
+                <th className="py-2.5 px-3">Justification / Notes</th>
+                <th className="py-2.5 px-3 text-right">Context Ref</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-[#EAE8E2] text-[#181A1B]">
@@ -170,44 +278,73 @@ export const AuditTrailView: React.FC<AuditTrailViewProps> = ({
                       {new Date(log.timestamp).toLocaleString()}
                     </td>
                     <td className="py-2 px-3 whitespace-nowrap">
-                      <button
-                        onClick={() => onSelectAssetByTag?.(log.assetTag)}
-                        className="font-mono text-xs font-bold px-1.5 py-0.5 rounded bg-[#E5E3DD] text-[#181A1B] border border-[#C5C3BC] hover:border-[#C66A2B] cursor-pointer"
-                        title="Click to view asset"
-                      >
-                        {log.assetTag}
-                      </button>
+                      {log.referenceType === 'PR' ? (
+                        <button
+                          onClick={() => onSelectProcurementRequest?.(log.reference)}
+                          className="font-mono text-xs font-bold px-2 py-0.5 rounded bg-[#F5F3FF] text-[#6D28D9] border border-[#DDD6FE] hover:border-[#7C3AED] hover:bg-[#EDE9FE] transition-colors cursor-pointer inline-flex items-center gap-1.5"
+                          title="Click to view procurement request"
+                        >
+                          <FileCheck2 className="w-3 h-3 text-[#7C3AED]" />
+                          {log.reference}
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => onSelectAssetByTag?.(log.reference)}
+                          className="font-mono text-xs font-bold px-2 py-0.5 rounded bg-[#E5E3DD] text-[#181A1B] border border-[#C5C3BC] hover:border-[#C66A2B] hover:bg-[#DDD9D0] transition-colors cursor-pointer inline-flex items-center gap-1.5"
+                          title="Click to view hardware asset"
+                        >
+                          <Tag className="w-3 h-3 text-[#C66A2B]" />
+                          {log.reference}
+                        </button>
+                      )}
                     </td>
                     <td className="py-2 px-3 whitespace-nowrap">
-                      <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${
-                        log.action === 'REASSIGN' 
-                          ? 'bg-[#EEF4FB] text-[#1956A6] border border-[#BCD4F3]'
-                          : log.action === 'WARRANTY_SYNC'
-                          ? 'bg-[#EBF7EE] text-[#0F682C] border border-[#B7E5C3]'
-                          : 'bg-[#FAF9F5] text-[#505457] border border-[#D8D6CF]'
-                      }`}>
+                      <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${getActionBadgeClass(log.action)}`}>
                         {log.action}
                       </span>
                     </td>
                     <td className="py-2 px-3 font-medium text-[#181A1B] whitespace-nowrap">
                       {log.property}
                     </td>
-                    <td className="py-2 px-3 font-mono text-[11px] text-[#A81F1A] max-w-[150px] truncate" title={log.oldValue}>
-                      {log.oldValue}
+                    <td className="py-2 px-3 font-mono text-[11px] text-[#A81F1A] max-w-[140px] truncate" title={log.oldValue}>
+                      {log.oldValue || '—'}
                     </td>
-                    <td className="py-2 px-3 font-mono text-[11px] text-[#0F682C] font-semibold max-w-[150px] truncate" title={log.newValue}>
+                    <td className="py-2 px-3 font-mono text-[11px] text-[#0F682C] font-semibold max-w-[140px] truncate" title={log.newValue}>
                       {log.newValue}
                     </td>
                     <td className="py-2 px-3 text-[#505457] whitespace-nowrap">
-                      {log.performedBy}
+                      <div className="flex flex-col">
+                        <span className="font-semibold text-xs text-[#181A1B]">{log.performedBy}</span>
+                        {log.role && (
+                          <span className="text-[10px] text-[#686B6D]">{log.role}</span>
+                        )}
+                      </div>
                     </td>
-                    <td className="py-2 px-3 text-[#686B6D] text-[11px] max-w-[180px] truncate" title={log.reason || ''}>
-                      {log.reason || '—'}
+                    <td className="py-2 px-3 text-[#686B6D] text-[11px] max-w-[220px]" title={log.reason || ''}>
+                      <div className="space-y-0.5">
+                        <p className="truncate">{log.reason || '—'}</p>
+                        <div className="flex flex-wrap gap-1">
+                          {log.poNumber && (
+                            <span className="font-mono text-[9px] px-1 rounded bg-[#F5F3FF] text-[#6D28D9] border border-[#DDD6FE]">
+                              PO: {log.poNumber}
+                            </span>
+                          )}
+                          {log.deliveryReference && (
+                            <span className="font-mono text-[9px] px-1 rounded bg-[#F0FDF4] text-[#15803D] border border-[#BBF7D0]">
+                              Slip: {log.deliveryReference}
+                            </span>
+                          )}
+                        </div>
+                      </div>
                     </td>
                     <td className="py-2 px-3 text-right whitespace-nowrap">
                       {log.jiraTicketKey ? (
                         <span className="font-mono text-[11px] font-semibold px-1.5 py-0.5 rounded bg-[#EEF4FB] text-[#1956A6] border border-[#BCD4F3]">
                           {log.jiraTicketKey}
+                        </span>
+                      ) : log.poNumber ? (
+                        <span className="font-mono text-[11px] font-semibold px-1.5 py-0.5 rounded bg-[#F5F3FF] text-[#6D28D9] border border-[#DDD6FE]">
+                          {log.poNumber}
                         </span>
                       ) : (
                         <span className="text-[#8A8C8E]">—</span>

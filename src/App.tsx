@@ -23,6 +23,7 @@ import { AssetDetailModal } from './components/AssetDetailModal';
 import { BarcodeScannerModal } from './components/BarcodeScannerModal';
 import { AddAssetModal } from './components/AddAssetModal';
 import { ProcurementView } from './components/ProcurementView';
+import { TransitionResult } from './services/procurementService';
 import { 
   getCategoryStockAssessments, 
   PERIPHERAL_CATEGORIES 
@@ -140,6 +141,7 @@ export default function App() {
   const [peripheralCategoryFilter, setPeripheralCategoryFilter] = useState<AssetCategory | 'ALL'>('ALL');
   const [procurementInitialView, setProcurementInitialView] = useState<ProcurementViewType>('all_requests');
   const [procurementInitialStatusFilter, setProcurementInitialStatusFilter] = useState<string>('ALL');
+  const [procurementSelectedRequestId, setProcurementSelectedRequestId] = useState<string | null>(null);
 
   const [selectedAsset, setSelectedAsset] = useState<Asset | null>(null);
   const [isScannerOpen, setIsScannerOpen] = useState<boolean>(false);
@@ -314,10 +316,61 @@ export default function App() {
     setActiveTab('peripherals');
   };
 
-  const handleNavigateToProcurement = (view?: ProcurementViewType, statusFilter?: string) => {
+  const handleNavigateToProcurement = (view?: ProcurementViewType, statusFilter?: string, requestId?: string) => {
     setProcurementInitialView(view || 'all_requests');
     setProcurementInitialStatusFilter(statusFilter || 'ALL');
+    setProcurementSelectedRequestId(requestId || null);
     setActiveTab('procurement');
+  };
+
+  const handleSelectProcurementRequest = (requestNumber: string) => {
+    const found = procurementRequests.find(r => r.requestNumber === requestNumber);
+    if (found) {
+      setProcurementInitialView('all_requests');
+      setProcurementInitialStatusFilter('ALL');
+      setProcurementSelectedRequestId(found.id);
+      setActiveTab('procurement');
+    }
+  };
+
+  // Central Workflow Transition Engine Result Handler
+  const handleApplyWorkflowResult = (result: TransitionResult) => {
+    if (!result.success && !result.updatedRequest) {
+      return;
+    }
+
+    if (result.updatedRequest) {
+      setProcurementRequests(prev => prev.map(r => r.id === result.updatedRequest!.id ? result.updatedRequest! : r));
+    }
+
+    const assetsToUpdate: Asset[] = [];
+    if (result.affectedAssets && result.affectedAssets.length > 0) {
+      assetsToUpdate.push(...result.affectedAssets);
+    } else if (result.affectedAsset) {
+      assetsToUpdate.push(result.affectedAsset);
+    }
+
+    if (assetsToUpdate.length > 0) {
+      setAssets(prev => {
+        const map = new Map(assetsToUpdate.map(a => [a.id, a]));
+        return prev.map(a => map.get(a.id) || a);
+      });
+    }
+
+    if (result.createdAssets && result.createdAssets.length > 0) {
+      setAssets(prev => [...result.createdAssets!, ...prev]);
+    }
+
+    const newLogs: ChangeLogEntry[] = [];
+    if (result.assetLogs && result.assetLogs.length > 0) {
+      newLogs.push(...result.assetLogs);
+    } else if (result.assetLog) {
+      newLogs.push(result.assetLog);
+    }
+
+    if (newLogs.length > 0) {
+      setAllChangeLogs(prev => [...newLogs, ...prev]);
+    }
   };
 
   // Procurement state transitions
@@ -484,10 +537,12 @@ export default function App() {
               currentUserRole={activeRole}
               initialView={procurementInitialView}
               initialStatusFilter={procurementInitialStatusFilter}
+              initialSelectedRequestId={procurementSelectedRequestId}
               onSaveDraft={handleSaveProcurementDraft}
               onSubmitRequest={handleSubmitProcurementRequest}
               onUpdateRequest={handleUpdateProcurementRequest}
               onRegisterFleetAssets={handleRegisterFleetAssets}
+              onApplyWorkflowResult={handleApplyWorkflowResult}
             />
           )}
 
@@ -517,7 +572,9 @@ export default function App() {
           {activeTab === 'audit_trail' && (
             <AuditTrailView
               changeLogs={allChangeLogs}
+              procurementRequests={procurementRequests}
               onSelectAssetByTag={handleSelectAssetByTag}
+              onSelectProcurementRequest={handleSelectProcurementRequest}
             />
           )}
         </main>

@@ -278,7 +278,7 @@ export const NavigationRail: React.FC<NavigationRailProps> = ({
 
         {!isCollapsed && (
           <div className="px-2 py-1 text-[10px] font-mono text-[#585B5E] text-center">
-            SYSASSIST • WORKSTATION
+            SYSTEM ASSIST • WORKSTATION
           </div>
         )}
       </div>
