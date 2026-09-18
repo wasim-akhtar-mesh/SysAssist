@@ -939,18 +939,18 @@ export function transitionRequest(
 
   // 11. Action: REGISTER_AND_ASSIGN_ASSETS
   if (action === 'REGISTER_AND_ASSIGN_ASSETS') {
-    if (actor.id !== 'asset_manager') {
-      return {
-        success: false,
-        error: 'Only IT Asset Managers can register and assign assets.'
-      };
-    }
-
     // Only allow registration from Asset Registration
     if (request.status !== 'Asset Registration') {
       return {
         success: false,
         error: `Cannot register assets from status '${request.status}'. Registration is only permitted in 'Asset Registration'.`
+      };
+    }
+
+    if (actor.id !== 'asset_manager') {
+      return {
+        success: false,
+        error: 'Only IT Asset Managers can register and assign assets.'
       };
     }
 

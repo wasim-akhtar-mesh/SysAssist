@@ -27,14 +27,18 @@ import {
   Radio,
   Lock
 } from 'lucide-react';
-import { JiraTicket, Asset, ChangeLogEntry, AssetCategory } from '../types';
+import { JiraTicket, Asset, ChangeLogEntry, AssetCategory, SimulatedUserRole } from '../types';
 import { SkeuoButton, LedIndicator, StatusBadge } from './SkeuoComponents';
 import { generateUniqueJiraKey, generateUniqueLogId } from '../utils/idGenerator';
 import { getCategorySpecsSummary } from '../utils/categorySpecs';
+import { ExportMenu } from './ExportMenu';
+import { exportJiraTickets, canRoleExport } from '../services/exportService';
+import { SIMULATED_ROLES } from '../services/procurementService';
 
 interface JiraTicketingViewProps {
   tickets: JiraTicket[];
   assets: Asset[];
+  currentUserRole?: SimulatedUserRole;
   onFulfillTicket: (ticketKey: string, assetId: string, log: ChangeLogEntry) => void;
   onCreateTicket: (ticket: JiraTicket) => void;
   currentUser: string;
@@ -56,6 +60,7 @@ export const inferCategoryFromHardware = (name?: string): AssetCategory => {
 export const JiraTicketingDrawer: React.FC<JiraTicketingViewProps> = ({
   tickets,
   assets,
+  currentUserRole,
   onFulfillTicket,
   onCreateTicket,
   currentUser,
@@ -260,6 +265,50 @@ export const JiraTicketingDrawer: React.FC<JiraTicketingViewProps> = ({
           >
             Config
           </SkeuoButton>
+
+          <ExportMenu
+            buttonSize="sm"
+            variant="standard"
+            label="Export"
+            options={[
+              {
+                id: 'filtered_jira',
+                label: `Filtered Tickets (${filteredTickets.length})`,
+                count: filteredTickets.length,
+                disabled: currentUserRole ? !canRoleExport(currentUserRole, 'jira').allowed : false,
+                disabledReason: currentUserRole ? canRoleExport(currentUserRole, 'jira').reason : undefined,
+                onExport: () => exportJiraTickets(
+                  filteredTickets,
+                  `Filtered Jira Tickets (Status: ${filterStatus}, Query: "${searchQuery || 'none'}")`,
+                  currentUserRole || SIMULATED_ROLES.it_head
+                )
+              },
+              {
+                id: 'all_jira',
+                label: `All Jira Tickets (${tickets.length})`,
+                count: tickets.length,
+                disabled: currentUserRole ? !canRoleExport(currentUserRole, 'jira').allowed : false,
+                disabledReason: currentUserRole ? canRoleExport(currentUserRole, 'jira').reason : undefined,
+                onExport: () => exportJiraTickets(
+                  tickets,
+                  'All Enterprise Jira Service Management Tickets',
+                  currentUserRole || SIMULATED_ROLES.it_head
+                )
+              },
+              {
+                id: 'pending_jira',
+                label: `Pending / Open Requests (${tickets.filter(t => t.status !== 'Fulfilled' && t.status !== 'Closed').length})`,
+                count: tickets.filter(t => t.status !== 'Fulfilled' && t.status !== 'Closed').length,
+                disabled: currentUserRole ? !canRoleExport(currentUserRole, 'jira').allowed : false,
+                disabledReason: currentUserRole ? canRoleExport(currentUserRole, 'jira').reason : undefined,
+                onExport: () => exportJiraTickets(
+                  tickets.filter(t => t.status !== 'Fulfilled' && t.status !== 'Closed'),
+                  'Pending Unfulfilled Jira Hardware Requests',
+                  currentUserRole || SIMULATED_ROLES.it_head
+                )
+              }
+            ]}
+          />
         </div>
       </div>
 

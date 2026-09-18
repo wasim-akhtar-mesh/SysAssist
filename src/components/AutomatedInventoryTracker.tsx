@@ -16,17 +16,18 @@ import {
   Mouse,
   Headphones
 } from 'lucide-react';
-import { Asset, InventoryThreshold, AssetCategory, SimulatedUserRole } from '../types';
+import { Asset, InventoryThreshold, AssetCategory, SimulatedUserRole, ProcurementRequest } from '../types';
 import { SkeuoButton, LedIndicator, SegmentedDisplay, StatusBadge } from './SkeuoComponents';
 import { getCategoryStockAssessments } from '../utils/inventorySelectors';
 import { ExportMenu, ExportOption } from './ExportMenu';
-import { exportStockAssessments, exportInventory, exportInventoryValuation, canRoleExport } from '../services/exportService';
+import { exportStockReplenishment, exportInventory, exportInventoryValuation, canRoleExport } from '../services/exportService';
 import { SIMULATED_ROLES } from '../services/procurementService';
 
 interface AutomatedInventoryTrackerProps {
   assets: Asset[];
   thresholds: InventoryThreshold[];
   currentUserRole?: SimulatedUserRole;
+  procurementRequests?: ProcurementRequest[];
   onDraftProcurementTicket: (item: { category: string; modelName: string; quantityToOrder: number }) => void;
   onOpenAssetDetail: (asset: Asset) => void;
 }
@@ -35,6 +36,7 @@ export const AutomatedInventoryTracker: React.FC<AutomatedInventoryTrackerProps>
   assets,
   thresholds,
   currentUserRole,
+  procurementRequests = [],
   onDraftProcurementTicket,
   onOpenAssetDetail
 }) => {
@@ -154,14 +156,39 @@ export const AutomatedInventoryTracker: React.FC<AutomatedInventoryTrackerProps>
               options={[
                 {
                   id: 'stock_breakdown',
-                  label: `Stock Assessment Breakdown (${categoryAssessments.length})`,
+                  label: `Stock Replenishment Report (${categoryAssessments.length})`,
                   count: categoryAssessments.length,
-                  disabled: currentUserRole ? !canRoleExport(currentUserRole, 'stock_assessment').allowed : false,
-                  disabledReason: currentUserRole ? canRoleExport(currentUserRole, 'stock_assessment').reason : undefined,
-                  onExport: () => exportStockAssessments(
-                    categoryAssessments,
-                    currentUserRole || SIMULATED_ROLES.it_head
-                  )
+                  disabled: currentUserRole ? !canRoleExport(currentUserRole, 'stock_replenishment').allowed : false,
+                  disabledReason: currentUserRole ? canRoleExport(currentUserRole, 'stock_replenishment').reason : undefined,
+                  onExport: () => {
+                    const formatted = categoryAssessments.map(c => {
+                      const matchingReqs = procurementRequests.filter(r => r.category === c.category && !['Closed', 'Rejected', 'Cancelled'].includes(r.status));
+                      const openPrs = matchingReqs.map(r => r.requestNumber).join('; ') || 'None';
+                      const sampleAsset = assets.find(a => a.category === c.category && a.purchasePrice);
+                      const unitPrice = sampleAsset?.purchasePrice || 0;
+                      const recommendedOrder = c.deficit > 0 ? c.deficit + 2 : 0;
+                      const estimatedCost = unitPrice * recommendedOrder;
+                      const status = c.isCritical ? 'Critical Shortfall' : c.isLowStock ? 'Low Stock' : 'Optimal Reserve';
+                      return {
+                        category: c.category,
+                        model: c.modelName,
+                        total: c.total,
+                        available: c.inStock,
+                        assigned: c.inUse,
+                        buffer: c.minQuantity,
+                        critical: c.criticalThreshold,
+                        shortfall: c.deficit,
+                        recommendedOrder,
+                        estimatedCost,
+                        status,
+                        openPrs
+                      };
+                    });
+                    exportStockReplenishment(
+                      formatted,
+                      currentUserRole || SIMULATED_ROLES.it_head
+                    );
+                  }
                 },
                 {
                   id: 'in_stock_depot',

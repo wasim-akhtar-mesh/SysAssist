@@ -566,6 +566,8 @@ export default function App() {
             <AutomatedInventoryTracker
               assets={assets}
               thresholds={INVENTORY_THRESHOLDS}
+              currentUserRole={activeRole}
+              procurementRequests={procurementRequests}
               onDraftProcurementTicket={handleDraftProcurementTicket}
               onOpenAssetDetail={(asset) => setSelectedAsset(asset)}
             />
@@ -576,6 +578,7 @@ export default function App() {
             <JiraTicketingDrawer
               tickets={jiraTickets}
               assets={assets}
+              currentUserRole={activeRole}
               onCreateTicket={handleCreateJiraTicket}
               onFulfillTicket={handleFulfillJiraTicket}
               currentUser={currentUserDisplay}
@@ -588,6 +591,7 @@ export default function App() {
             <AuditTrailView
               changeLogs={allChangeLogs}
               procurementRequests={procurementRequests}
+              currentUserRole={activeRole}
               onSelectAssetByTag={handleSelectAssetByTag}
               onSelectProcurementRequest={handleSelectProcurementRequest}
             />

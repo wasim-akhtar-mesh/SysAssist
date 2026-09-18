@@ -3,7 +3,9 @@ import {
   ProcurementRequest, 
   JiraTicket, 
   ChangeLogEntry, 
-  SimulatedUserRole 
+  UnifiedAuditLog,
+  SimulatedUserRole,
+  AssetCategory
 } from '../types';
 import { isActorRequestOwner } from './procurementService';
 
@@ -130,13 +132,14 @@ export function canRoleExport(
       exportType === 'stock_replenishment' || 
       exportType === 'operational_summary' || 
       exportType === 'jira' || 
-      exportType === 'inventory'
+      exportType === 'inventory' ||
+      exportType === 'audit'
     ) {
       return { allowed: true };
     }
     return { 
       allowed: false, 
-      reason: 'IT Head export scope includes operational requests, inventory, stock replenishment, and system summaries.' 
+      reason: 'IT Head export scope includes operational requests, inventory, stock replenishment, audit trail, and system summaries.' 
     };
   }
 
@@ -246,21 +249,23 @@ export function exportInventory(
   const rows = assets.map(a => {
     // Format category-aware hardware specifications cleanly
     let specsFormatted = '';
-    if (a.category === 'Laptops' && a.specs) {
+    if (a.category === 'Laptop' && a.specs) {
       const parts = [];
       if (a.specs.processor) parts.push(`CPU: ${a.specs.processor}`);
       if (a.specs.ram) parts.push(`RAM: ${a.specs.ram}`);
       if (a.specs.storage) parts.push(`Storage: ${a.specs.storage}`);
-      if (a.specs.screenSize) parts.push(`Screen: ${a.specs.screenSize}`);
+      if (a.specs.display) parts.push(`Screen: ${a.specs.display}`);
       specsFormatted = parts.join(' | ');
     } else if (a.specs) {
       // Peripherals or others: never label with CPU/RAM/Storage if empty or not applicable
       const parts = [];
       if (a.specs.screenSize) parts.push(`Size: ${a.specs.screenSize}`);
-      if (a.specs.screenResolution) parts.push(`Resolution: ${a.specs.screenResolution}`);
+      if (a.specs.resolution) parts.push(`Resolution: ${a.specs.resolution}`);
       if (a.specs.ports) parts.push(`Ports: ${a.specs.ports}`);
       if (a.specs.connectivity) parts.push(`Connectivity: ${a.specs.connectivity}`);
       if (a.specs.keyboardLayout) parts.push(`Layout: ${a.specs.keyboardLayout}`);
+      if (a.specs.sensorType) parts.push(`Sensor: ${a.specs.sensorType}`);
+      if (a.specs.audioFeatures) parts.push(`Audio: ${a.specs.audioFeatures}`);
       specsFormatted = parts.length > 0 ? parts.join(' | ') : (a.model || '');
     }
 
@@ -271,7 +276,7 @@ export function exportInventory(
       a.barcode,
       a.serialNumber,
       a.category,
-      a.model,
+      a.name,
       a.manufacturer,
       a.model,
       a.status,
@@ -283,9 +288,9 @@ export function exportInventory(
       a.purchasePrice !== undefined ? `$${a.purchasePrice.toFixed(2)}` : 'Unknown / Missing',
       a.supplier || '',
       a.warrantyExpiry || 'N/A',
-      a.linkedJiraTicket || '',
-      a.linkedProcurementRequest || '',
-      a.poNumber || '',
+      a.linkedJiraKey || '',
+      a.linkedProcurementId || '',
+      a.purchaseOrderNumber || '',
       specsFormatted,
       lastLogDate
     ];
@@ -616,8 +621,8 @@ export function exportInventoryValuation(
       groups[key].withPriceCount += 1;
       groups[key].totalValue += a.purchasePrice;
     }
-    if (a.status === 'Assigned') groups[key].assignedCount += 1;
-    else if (a.status === 'Available') groups[key].availableCount += 1;
+    if (a.status === 'In Use') groups[key].assignedCount += 1;
+    else if (a.status === 'In Stock') groups[key].availableCount += 1;
     else if (a.status === 'Maintenance') groups[key].maintenanceCount += 1;
     else if (a.status === 'Retired') groups[key].retiredCount += 1;
   });
@@ -786,16 +791,16 @@ export function exportJiraTickets(
   const rows = tickets.map(t => [
     t.key,
     t.summary,
-    t.issueType,
+    t.issueType || 'Hardware Request',
     t.priority,
     t.status,
-    t.reporter.name,
-    t.reporter.email,
-    t.reporter.department || '',
-    t.requestedItem,
-    t.category,
-    t.created,
-    t.updated,
+    t.requester.name,
+    t.requester.email,
+    t.requester.department || '',
+    t.requestedEquipment || t.requestedHardware || t.summary,
+    t.requestedCategory || 'Laptop',
+    t.createdAt || t.createdDate || '',
+    t.updatedAt || '',
     t.linkedAssetTag || '',
     t.fulfilledAssetTag || '',
     'System Assist Local Storage'
@@ -817,7 +822,7 @@ export function exportJiraTickets(
 // --------------------------------------------------------------------------
 
 export function exportAuditTrail(
-  logs: ChangeLogEntry[],
+  logs: UnifiedAuditLog[],
   filterLabel: string,
   actor: SimulatedUserRole
 ): { success: boolean; count: number; error?: string } {
@@ -835,8 +840,9 @@ export function exportAuditTrail(
     'Event Source',
     'Identifier (Asset Tag / PR Number)',
     'Action Taken',
-    'Previous State',
-    'New State',
+    'Property Modified',
+    'Previous State / Value',
+    'New State / Value',
     'Actor Name',
     'Actor Role',
     'Reason / Operational Notes',
@@ -845,25 +851,21 @@ export function exportAuditTrail(
     'Jira Key Reference'
   ];
 
-  const rows = logs.map(l => {
-    const isProcurement = l.source === 'Procurement Lifecycle' || l.action?.toLowerCase().includes('procurement') || (l.targetId && l.targetId.startsWith('PR-'));
-    const sourceLabel = isProcurement ? 'Procurement Lifecycle' : 'Hardware Fleet';
-
-    return [
-      l.timestamp,
-      sourceLabel,
-      l.targetId || l.assetTag || 'N/A',
-      l.action,
-      l.previousState || 'N/A',
-      l.newState || 'N/A',
-      l.actor,
-      l.role || 'Staff Operator',
-      l.notes || '',
-      l.poNumber || '',
-      l.deliveryReference || '',
-      l.jiraKey || ''
-    ];
-  });
+  const rows = logs.map(l => [
+    l.timestamp,
+    l.source,
+    l.reference,
+    l.action,
+    l.property,
+    l.oldValue || 'N/A',
+    l.newValue || 'N/A',
+    l.performedBy,
+    l.role || 'Staff Operator',
+    l.reason || '',
+    l.poNumber || '',
+    l.deliveryReference || '',
+    l.jiraTicketKey || ''
+  ]);
 
   const csv = generateCsvString(headers, rows, {
     title: 'Operational Audit & Lifecycle Trail',
@@ -896,25 +898,25 @@ export function exportDashboardOperationalSummary(
   const { assets, procurementRequests, jiraTickets, actor } = params;
 
   // Compute metrics
-  const laptops = assets.filter(a => a.category === 'Laptops');
+  const laptops = assets.filter(a => a.category === 'Laptop');
   const totalLaptops = laptops.length;
-  const availableLaptops = laptops.filter(a => a.status === 'Available').length;
-  const assignedLaptops = laptops.filter(a => a.status === 'Assigned').length;
+  const availableLaptops = laptops.filter(a => a.status === 'In Stock').length;
+  const assignedLaptops = laptops.filter(a => a.status === 'In Use').length;
   const maintenanceLaptops = laptops.filter(a => a.status === 'Maintenance').length;
 
-  const peripherals = assets.filter(a => a.category !== 'Laptops');
+  const peripherals = assets.filter(a => a.category !== 'Laptop');
   const peripheralTotalsByCategory: Record<string, number> = {};
   peripherals.forEach(p => {
     peripheralTotalsByCategory[p.category] = (peripheralTotalsByCategory[p.category] || 0) + 1;
   });
 
-  const openJira = jiraTickets.filter(j => j.status !== 'Resolved' && j.status !== 'Closed').length;
+  const openJira = jiraTickets.filter(j => j.status !== 'Fulfilled' && j.status !== 'Closed').length;
 
   // Stock categories below buffer
-  const categories = ['Laptops', 'Displays', 'Docks', 'Keyboards', 'Mice', 'Audio'];
+  const categories: AssetCategory[] = ['Laptop', 'Display', 'Dock', 'Keyboard', 'Mouse', 'Audio/Headset'];
   let lowStockCategoriesCount = 0;
   categories.forEach(cat => {
-    const avail = assets.filter(a => a.category === cat && a.status === 'Available').length;
+    const avail = assets.filter(a => a.category === cat && a.status === 'In Stock').length;
     if (avail < 2) lowStockCategoriesCount += 1;
   });
 
@@ -990,3 +992,6 @@ export function exportDashboardOperationalSummary(
   downloadCsvFile(csv, 'Operational_Summary');
   return { success: true, count: rows.length };
 }
+
+// Convenient alias
+export const exportStockAssessments = exportStockReplenishment;

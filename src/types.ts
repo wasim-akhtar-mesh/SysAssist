@@ -299,3 +299,21 @@ export interface ProcurementRequest {
   auditLogs: ProcurementAuditLog[];
 }
 
+export interface UnifiedAuditLog {
+  id: string;
+  timestamp: string;
+  source: 'Procurement' | 'Hardware Fleet';
+  reference: string;
+  referenceType: 'PR' | 'AST';
+  action: string;
+  property: string;
+  oldValue: string;
+  newValue: string;
+  performedBy: string;
+  role?: string;
+  reason?: string;
+  poNumber?: string;
+  deliveryReference?: string;
+  jiraTicketKey?: string;
+}
+

@@ -15,30 +15,18 @@ import {
   Package,
   Layers
 } from 'lucide-react';
-import { ChangeLogEntry, ProcurementRequest } from '../types';
+import { ChangeLogEntry, ProcurementRequest, SimulatedUserRole, UnifiedAuditLog } from '../types';
 import { SkeuoButton, SegmentedDisplay, StatusBadge } from './SkeuoComponents';
+import { ExportMenu } from './ExportMenu';
+import { exportAuditTrail, canRoleExport } from '../services/exportService';
+import { SIMULATED_ROLES } from '../services/procurementService';
 
-export interface UnifiedAuditLog {
-  id: string;
-  timestamp: string;
-  source: 'Procurement' | 'Hardware Fleet';
-  reference: string;
-  referenceType: 'PR' | 'AST';
-  action: string;
-  property: string;
-  oldValue: string;
-  newValue: string;
-  performedBy: string;
-  role?: string;
-  reason?: string;
-  poNumber?: string;
-  deliveryReference?: string;
-  jiraTicketKey?: string;
-}
+export type { UnifiedAuditLog };
 
 interface AuditTrailViewProps {
   changeLogs: ChangeLogEntry[];
   procurementRequests?: ProcurementRequest[];
+  currentUserRole?: SimulatedUserRole;
   onSelectAssetByTag?: (assetTag: string) => void;
   onSelectProcurementRequest?: (requestNumber: string) => void;
 }
@@ -46,6 +34,7 @@ interface AuditTrailViewProps {
 export const AuditTrailView: React.FC<AuditTrailViewProps> = ({
   changeLogs,
   procurementRequests = [],
+  currentUserRole,
   onSelectAssetByTag,
   onSelectProcurementRequest
 }) => {
@@ -125,49 +114,6 @@ export const AuditTrailView: React.FC<AuditTrailViewProps> = ({
     });
   }, [unifiedLogs, searchQuery, sourceFilter, selectedAction]);
 
-  const handleExportCSV = () => {
-    const headers = [
-      'Timestamp', 
-      'Source', 
-      'Reference', 
-      'Action', 
-      'Property Modified', 
-      'Previous State', 
-      'New State', 
-      'Operator', 
-      'Role', 
-      'Justification / Notes', 
-      'PO Number', 
-      'Delivery Reference', 
-      'Jira Key'
-    ];
-
-    const rows = filteredLogs.map(log => [
-      `"${log.timestamp}"`,
-      `"${log.source}"`,
-      `"${log.reference}"`,
-      `"${log.action}"`,
-      `"${log.property}"`,
-      `"${(log.oldValue || '').replace(/"/g, '""')}"`,
-      `"${(log.newValue || '').replace(/"/g, '""')}"`,
-      `"${(log.performedBy || '').replace(/"/g, '""')}"`,
-      `"${(log.role || '').replace(/"/g, '""')}"`,
-      `"${(log.reason || '').replace(/"/g, '""')}"`,
-      `"${(log.poNumber || '').replace(/"/g, '""')}"`,
-      `"${(log.deliveryReference || '').replace(/"/g, '""')}"`,
-      `"${(log.jiraTicketKey || '').replace(/"/g, '""')}"`
-    ]);
-
-    const csvContent = 'data:text/csv;charset=utf-8,' + [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
-    const encodedUri = encodeURI(csvContent);
-    const link = document.createElement('a');
-    link.setAttribute('href', encodedUri);
-    link.setAttribute('download', `System_Assist_Audit_Trail_${new Date().toISOString().slice(0, 10)}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  };
-
   const procurementCount = unifiedLogs.filter(l => l.source === 'Procurement').length;
   const fleetCount = unifiedLogs.filter(l => l.source === 'Hardware Fleet').length;
   const uniqueReferences = new Set(unifiedLogs.map(l => l.reference)).size;
@@ -236,14 +182,61 @@ export const AuditTrailView: React.FC<AuditTrailViewProps> = ({
             <option value="Hardware Fleet">Hardware Fleet Only</option>
           </select>
 
-          <SkeuoButton
-            size="sm"
+          <ExportMenu
+            buttonSize="sm"
             variant="standard"
-            onClick={handleExportCSV}
-            icon={<FileSpreadsheet className="w-3.5 h-3.5 text-[#0F682C]" />}
-          >
-            Export CSV
-          </SkeuoButton>
+            label="Export"
+            options={[
+              {
+                id: 'filtered_audit',
+                label: `Filtered Audit Records (${filteredLogs.length})`,
+                count: filteredLogs.length,
+                disabled: currentUserRole ? !canRoleExport(currentUserRole, 'audit').allowed : false,
+                disabledReason: currentUserRole ? canRoleExport(currentUserRole, 'audit').reason : undefined,
+                onExport: () => exportAuditTrail(
+                  filteredLogs,
+                  `Filtered Audit Log (Source: ${sourceFilter}, Action: ${selectedAction}, Query: "${searchQuery || 'none'}")`,
+                  currentUserRole || SIMULATED_ROLES.it_head
+                )
+              },
+              {
+                id: 'all_audit',
+                label: `Complete Audit Trail (${unifiedLogs.length})`,
+                count: unifiedLogs.length,
+                disabled: currentUserRole ? !canRoleExport(currentUserRole, 'audit').allowed : false,
+                disabledReason: currentUserRole ? canRoleExport(currentUserRole, 'audit').reason : undefined,
+                onExport: () => exportAuditTrail(
+                  unifiedLogs,
+                  'Complete Enterprise Operational Audit Trail',
+                  currentUserRole || SIMULATED_ROLES.it_head
+                )
+              },
+              {
+                id: 'procurement_audit',
+                label: `Procurement Lifecycle Events (${procurementCount})`,
+                count: procurementCount,
+                disabled: currentUserRole ? !canRoleExport(currentUserRole, 'audit').allowed : false,
+                disabledReason: currentUserRole ? canRoleExport(currentUserRole, 'audit').reason : undefined,
+                onExport: () => exportAuditTrail(
+                  unifiedLogs.filter(l => l.source === 'Procurement'),
+                  'Procurement Lifecycle Audit Records',
+                  currentUserRole || SIMULATED_ROLES.it_head
+                )
+              },
+              {
+                id: 'fleet_audit',
+                label: `Hardware Fleet Events (${fleetCount})`,
+                count: fleetCount,
+                disabled: currentUserRole ? !canRoleExport(currentUserRole, 'audit').allowed : false,
+                disabledReason: currentUserRole ? canRoleExport(currentUserRole, 'audit').reason : undefined,
+                onExport: () => exportAuditTrail(
+                  unifiedLogs.filter(l => l.source === 'Hardware Fleet'),
+                  'Hardware Fleet Modification Records',
+                  currentUserRole || SIMULATED_ROLES.it_head
+                )
+              }
+            ]}
+          />
         </div>
       </div>
 

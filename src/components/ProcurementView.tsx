@@ -47,8 +47,7 @@ import { RegisterAssetsModal } from './RegisterAssetsModal';
 import { ExportMenu, ExportOption } from './ExportMenu';
 import { 
   exportProcurementRequests, 
-  exportProcurementSpendSummary, 
-  exportPurchasingQueue, 
+  exportProcurementSpendReport, 
   canRoleExport 
 } from '../services/exportService';
 
@@ -379,15 +378,13 @@ export const ProcurementView: React.FC<ProcurementViewProps> = ({
             options={[
               {
                 id: 'filtered_requests',
-                label: `Filtered View (${filteredRequests.length})`,
-                count: filteredRequests.length,
-                disabled: !canRoleExport(currentUserRole, 'procurement_all').allowed && !canRoleExport(currentUserRole, 'procurement_own').allowed,
-                disabledReason: !canRoleExport(currentUserRole, 'procurement_all').allowed && !canRoleExport(currentUserRole, 'procurement_own').allowed
-                  ? canRoleExport(currentUserRole, 'procurement_all').reason
-                  : undefined,
+                label: `Filtered View (${displayedRequests.length})`,
+                count: displayedRequests.length,
+                disabled: !canRoleExport(currentUserRole, 'procurement').allowed,
+                disabledReason: canRoleExport(currentUserRole, 'procurement').reason,
                 onExport: () => exportProcurementRequests(
-                  filteredRequests,
-                  `Filtered Procurement View (${activeTab}, Status: ${statusFilter})`,
+                  displayedRequests,
+                  `Filtered Procurement View (${activeTab}, Category: ${categoryFilter}, Status: ${statusFilter})`,
                   currentUserRole
                 )
               },
@@ -397,33 +394,37 @@ export const ProcurementView: React.FC<ProcurementViewProps> = ({
                   ? `My Requests (${myRequestsCount})` 
                   : `All Procurement Records (${requests.length})`,
                 count: currentUserRole.exportScope === 'own' ? myRequestsCount : requests.length,
-                disabled: !canRoleExport(currentUserRole, 'procurement_all').allowed && !canRoleExport(currentUserRole, 'procurement_own').allowed,
-                disabledReason: !canRoleExport(currentUserRole, 'procurement_all').allowed && !canRoleExport(currentUserRole, 'procurement_own').allowed
-                  ? canRoleExport(currentUserRole, 'procurement_all').reason
-                  : undefined,
+                disabled: !canRoleExport(currentUserRole, 'procurement').allowed,
+                disabledReason: canRoleExport(currentUserRole, 'procurement').reason,
                 onExport: () => exportProcurementRequests(
-                  currentUserRole.exportScope === 'own' 
-                    ? requests.filter(r => r.requester.email.toLowerCase() === currentUserRole.email.toLowerCase() || r.requester.name.toLowerCase() === currentUserRole.name.toLowerCase())
-                    : requests,
+                  requests,
                   currentUserRole.exportScope === 'own' ? 'My Procurement Requests' : 'All Enterprise Procurement Records',
                   currentUserRole
                 )
               },
               {
                 id: 'spend_summary',
-                label: 'Spend & Commitments by Currency',
+                label: 'Spend Report & Multi-Currency Commitments',
                 count: requests.length,
-                disabled: !canRoleExport(currentUserRole, 'procurement_spend').allowed,
-                disabledReason: canRoleExport(currentUserRole, 'procurement_spend').reason,
-                onExport: () => exportProcurementSpendSummary(requests, currentUserRole)
+                disabled: !canRoleExport(currentUserRole, 'spend_report').allowed,
+                disabledReason: canRoleExport(currentUserRole, 'spend_report').reason,
+                onExport: () => exportProcurementSpendReport(
+                  requests, 
+                  'Enterprise Procurement Spend & Reconciliation', 
+                  currentUserRole
+                )
               },
               {
                 id: 'purchasing_queue',
-                label: `Purchasing Queue & Orders (${purchasingQueueCount})`,
+                label: `Purchasing & Vendor Queue (${purchasingQueueCount})`,
                 count: purchasingQueueCount,
-                disabled: !canRoleExport(currentUserRole, 'purchasing_queue').allowed,
-                disabledReason: canRoleExport(currentUserRole, 'purchasing_queue').reason,
-                onExport: () => exportPurchasingQueue(requests, currentUserRole)
+                disabled: !canRoleExport(currentUserRole, 'procurement').allowed,
+                disabledReason: canRoleExport(currentUserRole, 'procurement').reason,
+                onExport: () => exportProcurementRequests(
+                  requests.filter(r => ['Purchasing Queue', 'Ordered', 'Shipped', 'Partially Received', 'Received'].includes(r.status)),
+                  'Purchasing & Vendor Delivery Queue',
+                  currentUserRole
+                )
               }
             ]}
           />

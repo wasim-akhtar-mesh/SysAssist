@@ -41,6 +41,15 @@ const buyerRole: SimulatedUserRole = {
   description: 'Procurement Specialist & Vendor PO Issuer'
 };
 
+const assetManagerRole: SimulatedUserRole = {
+  id: 'asset_manager',
+  name: 'Kenji Sato',
+  email: 'kenji.sato@meshconnect.internal',
+  department: 'Depot Operations',
+  badge: 'IT Asset Manager',
+  description: 'IT Logistics Custodian'
+};
+
 function createSampleRequest(overrides: Partial<ProcurementRequest> = {}): ProcurementRequest {
   return {
     id: 'pr-test-ui-1',
@@ -400,7 +409,7 @@ describe('Procurement UI & Guarded Workflow Engine Integration', () => {
     };
 
     // Attempt registration while still in Ordered state
-    const prematureResult = transitionRequest(orderedReq, 'REGISTER_AND_ASSIGN_ASSETS', itLeadRole, {
+    const prematureResult = transitionRequest(orderedReq, 'REGISTER_AND_ASSIGN_ASSETS', assetManagerRole, {
       newAssets: [prematureAsset]
     });
 
@@ -423,7 +432,7 @@ describe('Procurement UI & Guarded Workflow Engine Integration', () => {
       ]
     });
 
-    const validResult = transitionRequest(readyReq, 'REGISTER_AND_ASSIGN_ASSETS', itLeadRole, {
+    const validResult = transitionRequest(readyReq, 'REGISTER_AND_ASSIGN_ASSETS', assetManagerRole, {
       newAssets: [prematureAsset]
     });
 
